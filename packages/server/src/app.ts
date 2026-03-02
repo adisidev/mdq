@@ -122,7 +122,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
   });
 
   // ── Session lookup by code ─────────────────
-  app.get("/api/session/by-code/:code", (req, res) => {
+  app.get(API.SESSION_BY_CODE, (req, res) => {
     const session = getSessionByCode(req.params.code.toUpperCase());
     if (!session) {
       return res.status(404).json({ error: "Session not found for that code" });
@@ -255,7 +255,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
   });
 
   // Show leaderboard (REVEAL -> LEADERBOARD, without ending)
-  app.post("/api/session/:id/leaderboard-show", (req, res) => {
+  app.post(API.SESSION_LEADERBOARD_SHOW, (req, res) => {
     withSession(req, res, (session) => {
       try {
         transitionState(session, "LEADERBOARD");

@@ -356,6 +356,73 @@ describe("Socket.IO Integration", () => {
       clearSessionTimers(session.sessionId);
       client2.disconnect();
     });
+
+    it("reconnected student who already answered gets answeredQuestions in join response", async () => {
+      const session = createSession("week01", "open");
+      storeSession(session);
+
+      // Join
+      const client1 = createClient(session.sessionId);
+      client1.connect();
+      const joined1Promise = waitForEvent<{ sessionToken: string }>(
+        client1,
+        SocketEvents.STUDENT_JOINED,
+      );
+      client1.emit(SocketEvents.STUDENT_JOIN, {
+        studentId: "S001",
+        displayName: "Alice",
+      });
+      const joined1 = await joined1Promise;
+      const token = joined1.sessionToken;
+
+      // Open question and submit answer
+      transitionState(session, "QUESTION_OPEN");
+      session.currentQuestionIndex = 0;
+      session.questionStartedAt = Date.now();
+
+      const acceptedPromise = waitForEvent<{ questionIndex: number }>(
+        client1,
+        SocketEvents.ANSWER_ACCEPTED,
+      );
+      client1.emit(SocketEvents.ANSWER_SUBMIT, {
+        questionIndex: 0,
+        selectedOptions: ["B"],
+      });
+      await acceptedPromise;
+
+      // Disconnect
+      client1.disconnect();
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Reconnect with valid token -- should include question 0 in answeredQuestions
+      const client2 = createClient(session.sessionId);
+      const joined2Promise = waitForEvent<{ sessionToken: string; answeredQuestions: number[] }>(
+        client2,
+        SocketEvents.STUDENT_JOINED,
+      );
+      client2.connect();
+      client2.emit(SocketEvents.STUDENT_JOIN, {
+        studentId: "S001",
+        sessionToken: token,
+      });
+      const joined2 = await joined2Promise;
+      expect(joined2.answeredQuestions).toContain(0);
+
+      // Attempting to resubmit should be rejected (server-side guard)
+      const rejectedPromise = waitForEvent<{ reason: string }>(
+        client2,
+        SocketEvents.ANSWER_REJECTED,
+      );
+      client2.emit(SocketEvents.ANSWER_SUBMIT, {
+        questionIndex: 0,
+        selectedOptions: ["A"],
+      });
+      const rejected = await rejectedPromise;
+      expect(rejected.reason).toContain("Already submitted");
+
+      clearSessionTimers(session.sessionId);
+      client2.disconnect();
+    });
   });
 
   describe("timer auto-close", () => {

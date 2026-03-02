@@ -6,7 +6,6 @@ import type {
   QuestionOpenPayload,
   QuestionTickPayload,
   AnswerCountPayload,
-  QuestionClosePayload,
   ResultsRevealPayload,
   ResultsDistributionPayload,
   LeaderboardUpdatePayload,
@@ -98,6 +97,7 @@ export interface UseSocketReturn {
 
 export function useSocket(sessionId: string | null, role: "student" | "instructor"): UseSocketReturn {
   const socketRef = useRef<Socket | null>(null);
+  const answeredQuestionsRef = useRef<number[]>([]);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -162,6 +162,7 @@ export function useSocket(sessionId: string | null, role: "student" | "instructo
       setStudentIdState(data.participantId);
       setSessionState(data.sessionState);
       setAnsweredQuestions(data.answeredQuestions || []);
+      answeredQuestionsRef.current = data.answeredQuestions || [];
       setError(null);
 
       // Persist for reconnection
@@ -189,8 +190,12 @@ export function useSocket(sessionId: string | null, role: "student" | "instructo
       setSessionState("QUESTION_OPEN");
       setReveal(null);
       setDistribution(null);
-      setSubmitted(false);
-      setSubmittedOptions([]);
+      // Preserve submitted=true if this question was already answered (reconnect case)
+      const alreadyAnswered = answeredQuestionsRef.current.includes(data.questionIndex);
+      setSubmitted(alreadyAnswered);
+      if (!alreadyAnswered) {
+        setSubmittedOptions([]);
+      }
       setRemainingSec(data.timeLimitSec);
     });
 
@@ -198,14 +203,18 @@ export function useSocket(sessionId: string | null, role: "student" | "instructo
       setRemainingSec(data.remainingSec);
     });
 
-    socket.on(SocketEvents.QUESTION_CLOSE, (_data: QuestionClosePayload) => {
+    socket.on(SocketEvents.QUESTION_CLOSE, () => {
       setSessionState("QUESTION_CLOSED");
       setRemainingSec(0);
     });
 
     socket.on(SocketEvents.ANSWER_ACCEPTED, (data: { questionIndex: number }) => {
       setSubmitted(true);
-      setAnsweredQuestions(prev => [...prev, data.questionIndex]);
+      setAnsweredQuestions(prev => {
+        const next = [...prev, data.questionIndex];
+        answeredQuestionsRef.current = next;
+        return next;
+      });
     });
 
     socket.on(SocketEvents.ANSWER_REJECTED, (data: { questionIndex: number; reason: string }) => {

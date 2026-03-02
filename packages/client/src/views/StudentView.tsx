@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSocket } from "../hooks/useSocket";
 import type { QuestionState, RevealState } from "../hooks/useSocket";
+import { API } from "@md-quiz/shared";
 import type { SessionState } from "@md-quiz/shared";
 import Timer from "../components/Timer";
 import Leaderboard from "../components/Leaderboard";
@@ -15,6 +16,7 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
   const [joining, setJoining] = useState(false);
 
   const sock = useSocket(sessionId, "student");
+  const { connected, sessionToken, joinSession, error: sockError } = sock;
 
   // Try to restore session from localStorage on mount
   useEffect(() => {
@@ -44,7 +46,7 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
 
     try {
       // Resolve session code to sessionId via REST endpoint
-      const res = await fetch(`/api/session/by-code/${code.trim().toUpperCase()}`);
+      const res = await fetch(API.SESSION_BY_CODE.replace(":code", code.trim().toUpperCase()));
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Session not found. Check the code and try again.");
@@ -70,31 +72,31 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
 
   // When socket connects and we have pending join, emit student:join
   useEffect(() => {
-    if (sock.connected && !sock.sessionToken) {
+    if (connected && !sessionToken) {
       try {
         const raw = localStorage.getItem("mdquiz_pending_join");
         if (raw) {
           const pending = JSON.parse(raw);
-          sock.joinSession(pending.studentId, pending.displayName);
+          joinSession(pending.studentId, pending.displayName);
           localStorage.removeItem("mdquiz_pending_join");
         }
       } catch {
         // ignore
       }
     }
-  }, [sock.connected, sock.sessionToken, sock.joinSession]);
+  }, [connected, sessionToken, joinSession]);
 
   // Clear joining state when joined or errored
   useEffect(() => {
-    if (sock.sessionToken) setJoining(false);
-  }, [sock.sessionToken]);
+    if (sessionToken) setJoining(false);
+  }, [sessionToken]);
 
   useEffect(() => {
-    if (sock.error) {
-      setJoinError(sock.error);
+    if (sockError) {
+      setJoinError(sockError);
       setJoining(false);
     }
-  }, [sock.error]);
+  }, [sockError]);
 
   // ── Not yet connected: show join form ──
   if (!sock.sessionToken) {
@@ -187,6 +189,7 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
   if (state === "QUESTION_OPEN" || state === "QUESTION_CLOSED") {
     return (
       <QuestionView
+        key={sock.currentQuestion?.questionIndex ?? 0}
         question={sock.currentQuestion}
         state={state}
         remainingSec={sock.remainingSec}
@@ -260,11 +263,6 @@ function QuestionView({
   onSubmit: (questionIndex: number, selectedOptions: string[]) => void;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
-
-  // Reset selection when question changes
-  useEffect(() => {
-    setSelected([]);
-  }, [question?.questionIndex]);
 
   if (!question) return null;
 
