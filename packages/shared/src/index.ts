@@ -160,6 +160,8 @@ export const API = {
   SESSION_REVEAL: "/api/session/:id/reveal",
   SESSION_END: "/api/session/:id/end",
   SESSION_LEADERBOARD: "/api/session/:id/leaderboard",
+  SESSION_LEADERBOARD_SHOW: "/api/session/:id/leaderboard-show",
+  SESSION_BY_CODE: "/api/session/by-code/:code",
   ACCESS_INFO: "/api/access-info",
   QR_CODE: "/api/qr/:sessionId.png",
   CUMULATIVE_LEADERBOARD: "/api/leaderboard/cumulative",

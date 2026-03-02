@@ -76,7 +76,7 @@ export async function endSession(sessionId: string) {
 }
 
 export async function showLeaderboard(sessionId: string): Promise<Record<string, unknown>> {
-  const res = await fetch(`/api/session/${sessionId}/leaderboard-show`, {
+  const res = await fetch(apiPath(API.SESSION_LEADERBOARD_SHOW, { id: sessionId }), {
     method: "POST",
   });
   if (!res.ok) {
