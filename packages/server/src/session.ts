@@ -232,7 +232,7 @@ export function computeLeaderboard(
     }
   }
 
-  // Sort: correct count desc, then total time asc
+  // Sort: correct count desc, then total time asc, then studentId asc (deterministic tie-break)
   const entries = [...studentStats.entries()]
     .map(([studentId, stats]) => ({
       rank: 0,
@@ -243,7 +243,8 @@ export function computeLeaderboard(
     }))
     .sort((a, b) => {
       if (b.correctCount !== a.correctCount) return b.correctCount - a.correctCount;
-      return a.totalTimeMs - b.totalTimeMs;
+      if (a.totalTimeMs !== b.totalTimeMs) return a.totalTimeMs - b.totalTimeMs;
+      return a.studentId.localeCompare(b.studentId);
     });
 
   // Assign ranks

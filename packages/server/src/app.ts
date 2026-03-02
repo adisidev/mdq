@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { API } from "@md-quiz/shared";
+import { API, Quiz } from "@md-quiz/shared";
 import {
   createSession,
   storeSession,
@@ -10,14 +10,30 @@ import {
   computeLeaderboard,
 } from "./session";
 import { parseQuizMarkdown } from "./parser";
-import { Quiz } from "@md-quiz/shared";
+import { persistSessionOnEnd, computeCumulativeLeaderboard } from "./persistence";
+import { getCachedAccessInfo } from "./access-info";
 import * as fs from "fs";
 import * as path from "path";
 
-export function createApp(quizDir?: string) {
+export interface AppOptions {
+  quizDir?: string;
+  dataDir?: string;
+}
+
+export function createApp(quizDirOrOpts?: string | AppOptions) {
   const app = express();
   app.use(cors());
   app.use(express.json());
+
+  // Parse options
+  let quizDir: string | undefined;
+  let dataDir: string | undefined;
+  if (typeof quizDirOrOpts === "string") {
+    quizDir = quizDirOrOpts;
+  } else if (quizDirOrOpts) {
+    quizDir = quizDirOrOpts.quizDir;
+    dataDir = quizDirOrOpts.dataDir;
+  }
 
   // ── Quiz store ──────────────────────────────
   const quizzes = new Map<string, Quiz>();
@@ -43,7 +59,8 @@ export function createApp(quizDir?: string) {
   }
 
   // Expose for testing
-  (app as unknown as { _quizzes: Map<string, Quiz> })._quizzes = quizzes;
+  (app as unknown as { _quizzes: Map<string, Quiz>; _dataDir?: string })._quizzes = quizzes;
+  (app as unknown as { _quizzes: Map<string, Quiz>; _dataDir?: string })._dataDir = dataDir;
 
   // ── Health ────────────────────────────────
   const startTime = Date.now();
@@ -186,6 +203,13 @@ export function createApp(quizDir?: string) {
         } else {
           transitionState(session, "ENDED");
         }
+
+        // Persist session data on end
+        const quiz = getQuizForSession(session.week);
+        if (quiz) {
+          persistSessionOnEnd(session, quiz, dataDir);
+        }
+
         res.json({ state: "ENDED" });
       } catch (e) {
         if (e instanceof StateTransitionError) {
@@ -214,14 +238,32 @@ export function createApp(quizDir?: string) {
     });
   });
 
-  // ── Access info (stub for now) ────────────
+  // ── Cumulative leaderboard ────────────────
+  app.get(API.CUMULATIVE_LEADERBOARD, (_req, res) => {
+    try {
+      const entries = computeCumulativeLeaderboard(dataDir);
+      res.json({ entries });
+    } catch {
+      res.json({ entries: [] });
+    }
+  });
+
+  // ── Access info ───────────────────────────
   app.get(API.ACCESS_INFO, (_req, res) => {
-    res.json({
-      fullUrl: "http://localhost:3000",
-      shortUrl: "",
-      qrCodePath: "",
-      source: "lan-fallback",
-    });
+    const info = getCachedAccessInfo();
+    if (info) {
+      res.json(info);
+    } else {
+      // Fallback: not yet detected
+      res.json({
+        fullUrl: `http://localhost:${process.env.PORT || 3000}`,
+        shortUrl: "",
+        qrCodeDataUrl: "",
+        source: "lan-fallback",
+        warning: "Access info not yet detected. Server may still be starting.",
+        detectedAt: Date.now(),
+      });
+    }
   });
 
   return app;

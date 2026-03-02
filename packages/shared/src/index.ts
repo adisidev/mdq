@@ -162,6 +162,7 @@ export const API = {
   SESSION_LEADERBOARD: "/api/session/:id/leaderboard",
   ACCESS_INFO: "/api/access-info",
   QR_CODE: "/api/qr/:sessionId.png",
+  CUMULATIVE_LEADERBOARD: "/api/leaderboard/cumulative",
 } as const;
 
 // ── Data Model Types ────────────────────────
@@ -223,8 +224,56 @@ export interface Session {
   createdAt: number;
 }
 
+// ── Persistence Types ───────────────────────
+
+/** Snapshot of a session written to data/sessions/<id>.json on session end */
+export interface SessionSnapshot {
+  sessionId: string;
+  sessionCode: string;
+  week: string;
+  mode: SessionMode;
+  questionCount: number;
+  participantCount: number;
+  participants: { studentId: string; displayName?: string; joinedAt: number }[];
+  createdAt: number;
+  endedAt: number;
+}
+
+/** Per-week leaderboard results written to data/winners/weekNN.json */
+export interface WeeklyResult {
+  week: string;
+  sessionId: string;
+  totalQuestions: number;
+  completedAt: number;
+  entries: LeaderboardEntry[];
+}
+
+/** Cumulative leaderboard entry derived from all weekly results */
+export interface CumulativeLeaderboardEntry {
+  rank: number;
+  studentId: string;
+  displayName?: string;
+  totalCorrect: number;
+  totalTimeMs: number;
+  weeksParticipated: number;
+}
+
+/** Access info returned by /api/access-info */
+export interface AccessInfo {
+  fullUrl: string;
+  shortUrl: string;
+  qrCodeDataUrl: string;
+  source: "tailscale" | "lan-fallback";
+  warning?: string;
+  detectedAt: number;
+}
+
+// ── REST API Paths (additional) ─────────────
+// (The API object above includes ACCESS_INFO and QR_CODE already)
+
 // ── Constants ───────────────────────────────
 export const DEFAULT_TIME_LIMIT_SEC = 20;
 export const SESSION_CODE_LENGTH = 6;
 export const DEFAULT_PORT = 3000;
 export const TICK_INTERVAL_MS = 1000;
+export const DATA_DIR = "data";
