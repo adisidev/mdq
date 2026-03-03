@@ -102,7 +102,9 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
 
   function buildJoinUrl(baseUrl: string, sessionCode: string): string {
     const normalized = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-    return `${normalized}/#/join/${sessionCode}`;
+    // Use a clean path instead of hash-based URL so QR scanners don't strip
+    // the fragment. The server redirects /join/:code to /#/join/:code.
+    return `${normalized}/join/${sessionCode}`;
   }
 
   // Expose for testing and socket setup
@@ -170,7 +172,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
     res.status(201).json({
       sessionId: session.sessionId,
       sessionCode: session.sessionCode,
-      joinUrl: `/#/join/${session.sessionCode}`,
+      joinUrl: `/join/${session.sessionCode}`,
     });
   });
 

@@ -84,6 +84,13 @@ const httpServer = createServer(app);
 const quizzes = (app as unknown as { _quizzes: Map<string, Quiz> })._quizzes;
 ioRef.current = setupSocket(httpServer, quizzes);
 
+// ── Student join redirect ──
+// QR scanners often strip hash fragments from URLs, so we support a clean
+// path /join/:code that redirects to the hash-based client route /#/join/:code.
+app.get("/join/:code", (req: express.Request, res: express.Response) => {
+  res.redirect(`/#/join/${req.params.code}`);
+});
+
 // ── Serve client static files in production ──
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));

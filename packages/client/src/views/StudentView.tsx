@@ -15,6 +15,13 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
 
+  // Sync sessionCode prop to code state (prop may change without remount)
+  useEffect(() => {
+    if (sessionCode) {
+      setCode(sessionCode);
+    }
+  }, [sessionCode]);
+
   // Clear error when user edits any input field
   const handleCodeChange = useCallback((val: string) => {
     setCode(val.toUpperCase());
