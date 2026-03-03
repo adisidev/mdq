@@ -1,5 +1,5 @@
-import { API } from "@md-quiz/shared";
-import type { AccessInfo } from "@md-quiz/shared";
+import { API } from "@mdq/shared";
+import type { AccessInfo } from "@mdq/shared";
 
 const BASE = "";
 
@@ -26,6 +26,22 @@ export interface CreateSessionResponse {
 export async function fetchQuizzes(): Promise<QuizSummary[]> {
   const res = await fetch(apiPath(API.QUIZZES));
   if (!res.ok) throw new Error("Failed to fetch quizzes");
+  return res.json();
+}
+
+export interface ReloadQuizzesResponse {
+  loaded: number;
+  quizzes: QuizSummary[];
+}
+
+export async function reloadQuizzes(): Promise<ReloadQuizzesResponse> {
+  const res = await fetch(apiPath(API.QUIZZES_RELOAD), {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to reload quizzes");
+  }
   return res.json();
 }
 

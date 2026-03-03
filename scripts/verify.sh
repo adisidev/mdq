@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/verify.sh -- One-command quality gate for md-quiz.
+# scripts/verify.sh -- One-command quality gate for mdq.
 # Runs lint, typecheck, build, unit tests, e2e tests, and load smoke.
 # Exit code 0 = all pass, non-zero = failure.
 #

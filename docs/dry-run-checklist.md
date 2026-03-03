@@ -1,14 +1,16 @@
 # Dry-Run Classroom Checklist
 
-Pre-class verification steps for running md-quiz live. Covers both Tailscale-available and LAN-only fallback scenarios.
+Pre-class verification steps for running mdq live. Covers both Tailscale-available and LAN-only fallback scenarios.
 
 ## Before Class (30 min)
 
 ### 1. Environment Check
 
 - [ ] Node.js installed (`node -v`, need v18+)
-- [ ] Dependencies installed (`cd ~/repos/md-quiz && npm install`)
+- [ ] Dependencies installed (`cd ~/repos/mdq && npm install`)
+- [ ] Local data dirs bootstrapped (`npm run setup:local`)
 - [ ] Quiz file ready (`data/quizzes/weekNN-quiz.md` exists, validated)
+- [ ] If quiz markdown was edited while server is already running, use "Reload Quiz Files" in instructor setup (no rebuild needed)
 - [ ] Build is current (`npm run build`)
 
 ### 2. Quick Smoke Test
@@ -37,8 +39,8 @@ Tailscale lets students reach your laptop from campus Wi-Fi without port forward
    This creates a public `https://<machine>.ts.net` URL.
 3. Start the server:
    ```bash
-   cd ~/repos/md-quiz
-   npm run start --workspace=@md-quiz/server
+   cd ~/repos/mdq
+   npm run start --workspace=@mdq/server
    ```
 4. The server will auto-detect Tailscale and print the access URL + QR code.
 5. Verify from your phone: open the URL, you should see the student join page.
@@ -51,12 +53,12 @@ If Tailscale is not installed or campus Wi-Fi blocks peer-to-peer:
 2. Find your local IP: `ipconfig getifaddr en0` (macOS)
 3. Start the server:
    ```bash
-   PORT=3000 npm run start --workspace=@md-quiz/server
+   PORT=3000 npm run start --workspace=@mdq/server
    ```
 4. The server will print a LAN URL like `http://192.168.x.x:3000`.
 5. Test from your phone on the same Wi-Fi. If it does not connect:
    - Check macOS firewall: System Settings > Network > Firewall. Allow incoming connections for Node.js.
-   - Try a different port: `PORT=8080 npm run start --workspace=@md-quiz/server`
+   - Try a different port: `PORT=8080 npm run start --workspace=@mdq/server`
    - As a last resort, use USB tethering from your phone and share the hotspot with students.
 
 ### 4. Projector Setup

@@ -7,7 +7,7 @@ import {
   broadcastLeaderboard,
   clearSessionTimers,
 } from "./socket";
-import { DEFAULT_PORT, Quiz, Session, SessionState, SocketEvents } from "@md-quiz/shared";
+import { DEFAULT_PORT, Quiz, Session, SessionState, SocketEvents } from "@mdq/shared";
 import { detectAccessInfo } from "./access-info";
 import { getDistribution } from "./session";
 import * as path from "path";
@@ -15,7 +15,7 @@ import * as fs from "fs";
 import express from "express";
 
 const port = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
-const quizDir = process.env.QUIZ_DIR || path.join(__dirname, "../../data/quizzes");
+const quizDir = process.env.QUIZ_DIR || path.resolve(__dirname, "../../../data/quizzes");
 const clientDist = path.join(__dirname, "../../client/dist");
 
 // We need io available for the state change callback, so we use a container
@@ -96,7 +96,7 @@ if (fs.existsSync(clientDist)) {
 }
 
 httpServer.listen(port, async () => {
-  console.log(`md-quiz server listening on port ${port}`);
+  console.log(`mdq server listening on port ${port}`);
   console.log(`Quiz directory: ${quizDir}`);
 
   // Detect access info (Tailscale/LAN) on startup

@@ -20,7 +20,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
-      "@md-quiz/shared": ["../shared/src/index.ts"]
+      "@mdq/shared": ["../shared/src/index.ts"]
     }
   },
   "include": ["src"]

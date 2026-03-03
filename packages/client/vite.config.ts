@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      '@md-quiz/shared': path.resolve(__dirname, '../shared/src/index.ts'),
+      '@mdq/shared': path.resolve(__dirname, '../shared/src/index.ts'),
     },
   },
   server: {

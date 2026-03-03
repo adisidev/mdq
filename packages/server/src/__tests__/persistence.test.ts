@@ -17,11 +17,11 @@ import {
   recordSubmission,
   transitionState,
 } from "../session";
-import { Session, Quiz, WeeklyResult, LeaderboardEntry } from "@md-quiz/shared";
+import { Session, Quiz, WeeklyResult, LeaderboardEntry } from "@mdq/shared";
 
 /** Create a temp directory for test data */
 function makeTempDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "md-quiz-persist-test-"));
+  return fs.mkdtempSync(path.join(os.tmpdir(), "mdq-persist-test-"));
 }
 
 /** Clean up temp directory */

@@ -36,12 +36,12 @@ import {
   ResultsRevealPayload,
   LeaderboardUpdatePayload,
   SessionStatePayload,
-} from "@md-quiz/shared";
+} from "@mdq/shared";
 import * as path from "path";
 import * as fs from "fs";
 import { AddressInfo } from "net";
 
-const quizDir = path.join(__dirname, "../../../../data/quizzes");
+const quizDir = path.join(__dirname, "fixtures/quizzes");
 
 /**
  * Helper: connect a student socket and join the session.

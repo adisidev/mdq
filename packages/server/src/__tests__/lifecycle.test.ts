@@ -3,7 +3,7 @@ import { createApp } from "../app";
 import { clearAllSessions } from "../session";
 import * as path from "path";
 
-const quizDir = path.join(__dirname, "../../../../data/quizzes");
+const quizDir = path.join(__dirname, "fixtures/quizzes");
 
 describe("REST API", () => {
   const app = createApp(quizDir);
@@ -30,6 +30,17 @@ describe("REST API", () => {
       const w1 = res.body.find((q: { week: string }) => q.week === "week01");
       expect(w1).toBeDefined();
       expect(w1.questionCount).toBe(3);
+    });
+  });
+
+  describe("POST /api/quizzes/reload", () => {
+    it("reloads quiz markdown files without restarting server", async () => {
+      const res = await request(app).post("/api/quizzes/reload");
+      expect(res.status).toBe(200);
+      expect(res.body.loaded).toBeGreaterThanOrEqual(2);
+      expect(Array.isArray(res.body.quizzes)).toBe(true);
+      const w1 = res.body.quizzes.find((q: { week: string }) => q.week === "week01");
+      expect(w1).toBeDefined();
     });
   });
 

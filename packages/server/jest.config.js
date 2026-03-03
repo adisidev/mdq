@@ -5,6 +5,6 @@ module.exports = {
   roots: ["<rootDir>/src"],
   testMatch: ["**/__tests__/**/*.test.ts"],
   moduleNameMapper: {
-    "^@md-quiz/shared$": "<rootDir>/../shared/src/index",
+    "^@mdq/shared$": "<rootDir>/../shared/src/index",
   },
 };

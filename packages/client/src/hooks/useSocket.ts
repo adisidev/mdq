@@ -12,8 +12,8 @@ import type {
   SessionStatePayload,
   SessionParticipantsPayload,
   LeaderboardEntry,
-} from "@md-quiz/shared";
-import { SocketEvents } from "@md-quiz/shared";
+} from "@mdq/shared";
+import { SocketEvents } from "@mdq/shared";
 
 // ── localStorage helpers ─────────────────────
 const STORAGE_KEY = "mdquiz_session";

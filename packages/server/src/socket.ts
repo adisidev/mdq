@@ -6,7 +6,7 @@ import {
   AnswerSubmitPayload,
   TICK_INTERVAL_MS,
   Quiz,
-} from "@md-quiz/shared";
+} from "@mdq/shared";
 import {
   getSession,
   addParticipant,
@@ -17,7 +17,7 @@ import {
   transitionState,
   computeLeaderboard,
 } from "./session";
-import { Session } from "@md-quiz/shared";
+import { Session } from "@mdq/shared";
 
 /** Active timer handles per session */
 const sessionTimers = new Map<string, NodeJS.Timeout>();

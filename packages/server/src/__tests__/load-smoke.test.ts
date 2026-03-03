@@ -32,13 +32,13 @@ import {
   AnswerAcceptedPayload,
   ResultsRevealPayload,
   LeaderboardUpdatePayload,
-} from "@md-quiz/shared";
+} from "@mdq/shared";
 import * as path from "path";
 import { AddressInfo } from "net";
 
 const STUDENT_COUNT = parseInt(process.env.LOAD_STUDENTS || "20", 10);
 const STEP_TIMEOUT = parseInt(process.env.LOAD_TIMEOUT || "10000", 10);
-const quizDir = path.join(__dirname, "../../../../data/quizzes");
+const quizDir = path.join(__dirname, "fixtures/quizzes");
 
 function waitFor<T>(socket: ClientSocket, event: string, timeout = STEP_TIMEOUT): Promise<T> {
   return new Promise((resolve, reject) => {

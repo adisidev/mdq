@@ -1,4 +1,4 @@
-import type { LeaderboardEntry } from "@md-quiz/shared";
+import type { LeaderboardEntry } from "@mdq/shared";
 
 /** Leaderboard table with staggered animation */
 export default function Leaderboard({

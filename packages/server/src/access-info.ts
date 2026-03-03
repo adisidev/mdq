@@ -1,4 +1,4 @@
-import { AccessInfo, DATA_DIR } from "@md-quiz/shared";
+import { AccessInfo, DATA_DIR } from "@mdq/shared";
 import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
@@ -168,13 +168,15 @@ export async function detectAccessInfo(
   // Generate short URL
   const shortUrl = await generateShortUrl(fullUrl, shortUrlProviders);
 
-  // Generate QR code
-  const qrCodeDataUrl = await generateQrDataUrl(fullUrl);
+  // Generate QR code. Prefer short URL when available.
+  const qrTargetUrl = shortUrl || fullUrl;
+  const qrCodeDataUrl = await generateQrDataUrl(qrTargetUrl);
 
   const info: AccessInfo = {
     fullUrl,
     shortUrl,
     qrCodeDataUrl,
+    qrTargetUrl,
     source,
     warning,
     detectedAt: Date.now(),

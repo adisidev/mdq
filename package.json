@@ -1,11 +1,12 @@
 {
-  "name": "md-quiz",
+  "name": "mdq",
   "version": "0.1.0",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
+    "setup:local": "bash ./scripts/setup-local.sh",
     "build": "npm run build --workspaces",
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint packages/*/src --ext .ts,.tsx",

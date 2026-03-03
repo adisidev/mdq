@@ -1,8 +1,8 @@
-# md-quiz: Product Requirements Document
+# mdq: Product Requirements Document
 
 ## 1. Executive Summary
 
-md-quiz is a lightweight, self-hosted quiz platform for in-class use. Instructors author quiz questions in markdown files (one per week), and the platform renders them as live, interactive quizzes that students join via QR code or short URL. The system provides a projector-friendly instructor view with real-time answer distributions, a results review screen with correct answers and explanations, and a weekly leaderboard for tracking top performers. The platform is designed to replace Slido for weekly in-class quizzes with a simpler, more controllable workflow that uses markdown files as the single source of truth.
+mdq is a lightweight, self-hosted quiz platform for in-class use. Instructors author quiz questions in markdown files (one per week), and the platform renders them as live, interactive quizzes that students join via QR code or short URL. The system provides a projector-friendly instructor view with real-time answer distributions, a results review screen with correct answers and explanations, and a weekly leaderboard for tracking top performers. The platform is designed to replace Slido for weekly in-class quizzes with a simpler, more controllable workflow that uses markdown files as the single source of truth.
 
 ## 2. Problem Statement
 
@@ -14,7 +14,7 @@ The current workflow uses Slido for in-class quizzes. While Slido works, it intr
 - **Subscription cost and feature bloat**: Slido includes many features (word clouds, open-ended polls, Q&A) that are unnecessary for the core use case of multiple-choice quizzes. The free tier has participant limits.
 - **No version control**: Quiz content lives in Slido's proprietary system rather than in a git-tracked repository, making it harder to review, iterate, and reuse across semesters.
 
-md-quiz solves these problems by using markdown files as the canonical quiz source, eliminating manual data entry, and providing exactly the features needed for in-class quizzes with no extras.
+mdq solves these problems by using markdown files as the canonical quiz source, eliminating manual data entry, and providing exactly the features needed for in-class quizzes with no extras.
 
 ## 3. Goals and Non-Goals
 
@@ -109,7 +109,7 @@ The system supports two modes for student identity validation at join time, conf
 
 **Open mode (no roster file):** If no roster is uploaded, the system falls back to a "claim any ID" model where any `studentId` is accepted. This is useful for ad hoc sessions, guest lectures, or situations where the instructor does not have a roster on hand. The instructor selects strict or open mode in the session configuration.
 
-**Impersonation mitigation in an in-class setting:** Since md-quiz is designed for in-person, in-class use, the following measures reduce impersonation risk without requiring authentication infrastructure:
+**Impersonation mitigation in an in-class setting:** Since mdq is designed for in-person, in-class use, the following measures reduce impersonation risk without requiring authentication infrastructure:
 
 1. **Session token binding**: Each `studentId` is bound to a `sessionToken` stored in the student's browser (see Student Identity above). A second device attempting to join with the same `studentId` would need a new token, triggering a conflict (rejected or previous connection dropped, per instructor policy).
 2. **Per-device submission count**: The instructor dashboard shows submission counts per connected device, allowing the instructor to spot a single device submitting under multiple IDs.
@@ -322,15 +322,15 @@ In the examples above, the first question has a 30-second time limit, the second
 
 ### Compatibility with d2l-quiz
 
-This format is intentionally compatible with the d2l-quiz markdown format so that the same markdown files can be used with the `gen_quiz_csv.py` script for D2L/xSITe import and with md-quiz for live in-class quizzes.
+This format is intentionally compatible with the d2l-quiz markdown format so that the same markdown files can be used with the `gen_quiz_csv.py` script for D2L/xSITe import and with mdq for live in-class quizzes.
 
 ## 9. Hosting and Deployment
 
 ### Frontend (GitHub Pages)
 
-The built React application and the markdown quiz files are committed to the `chektien/md-quiz` repository. GitHub Pages serves the static frontend from the `gh-pages` branch (or `/docs` folder on `main`).
+The built React application and the markdown quiz files are committed to the `chektien/mdq` repository. GitHub Pages serves the static frontend from the `gh-pages` branch (or `/docs` folder on `main`).
 
-- URL: `https://chektien.github.io/md-quiz/`
+- URL: `https://chektien.github.io/mdq/`
 - The markdown quiz files are placed in a `quizzes/` directory within the repo.
 - The frontend fetches quiz file contents via the GitHub raw content URL or from the same static hosting.
 

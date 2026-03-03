@@ -9,11 +9,11 @@ import {
   createSession,
   transitionState,
 } from "../session";
-import { SocketEvents, Quiz } from "@md-quiz/shared";
+import { SocketEvents, Quiz } from "@mdq/shared";
 import * as path from "path";
 import { AddressInfo } from "net";
 
-const quizDir = path.join(__dirname, "../../../../data/quizzes");
+const quizDir = path.join(__dirname, "fixtures/quizzes");
 
 describe("Socket.IO Integration", () => {
   let httpServer: ReturnType<typeof createServer>;

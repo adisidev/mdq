@@ -1,5 +1,5 @@
 {
-  "name": "@md-quiz/server",
+  "name": "@mdq/server",
   "version": "0.1.0",
   "private": true,
   "main": "dist/index.js",
@@ -10,7 +10,7 @@
     "test": "jest --forceExit --detectOpenHandles"
   },
   "dependencies": {
-    "@md-quiz/shared": "*",
+    "@mdq/shared": "*",
     "cors": "^2.8.5",
     "express": "^4.18.0",
     "marked": "^12.0.0",

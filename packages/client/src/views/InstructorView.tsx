@@ -3,6 +3,7 @@ import { useSocket } from "../hooks/useSocket";
 import type { QuestionState, RevealState } from "../hooks/useSocket";
 import {
   fetchQuizzes,
+  reloadQuizzes,
   createSession,
   startSession,
   nextQuestion,
@@ -14,7 +15,7 @@ import {
   type QuizSummary,
   type CreateSessionResponse,
 } from "../hooks/api";
-import type { AccessInfo, SessionState } from "@md-quiz/shared";
+import type { AccessInfo, SessionState } from "@mdq/shared";
 import Timer from "../components/Timer";
 import DistributionChart from "../components/DistributionChart";
 import Leaderboard from "../components/Leaderboard";
@@ -84,6 +85,22 @@ export default function InstructorView() {
     }
   }, [selectedWeek, quizzes]);
 
+  const handleReloadQuizzes = useCallback(async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const result = await reloadQuizzes();
+      setQuizzes(result.quizzes);
+      if (!result.quizzes.find((q) => q.week === selectedWeek) && result.quizzes.length > 0) {
+        setSelectedWeek(result.quizzes[0].week);
+      }
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : "Failed to reload quizzes");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedWeek]);
+
   const handleAction = useCallback(
     async (action: () => Promise<unknown>, label: string) => {
       setLoading(true);
@@ -136,6 +153,13 @@ export default function InstructorView() {
               </select>
             </div>
             <button
+              onClick={handleReloadQuizzes}
+              disabled={loading}
+              className="w-full bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-700 disabled:text-zinc-500 border border-zinc-700 text-zinc-200 font-medium py-3 rounded-xl transition-colors"
+            >
+              {loading ? "Reloading..." : "Reload Quiz Files"}
+            </button>
+            <button
               onClick={handleCreateSession}
               disabled={loading || !selectedWeek}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white font-semibold py-4 rounded-xl transition-colors text-lg"
@@ -160,6 +184,7 @@ export default function InstructorView() {
             qrDataUrl={accessInfo.qrCodeDataUrl}
             fullUrl={accessInfo.fullUrl}
             shortUrl={accessInfo.shortUrl}
+            qrTargetUrl={accessInfo.qrTargetUrl}
             sessionCode={sessionInfo.sessionCode}
           />
         )}

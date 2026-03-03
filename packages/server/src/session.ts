@@ -6,7 +6,7 @@ import {
   Submission,
   STATE_TRANSITIONS,
   SESSION_CODE_LENGTH,
-} from "@md-quiz/shared";
+} from "@mdq/shared";
 import { v4 as uuidv4 } from "uuid";
 
 /** Error for invalid state transitions */

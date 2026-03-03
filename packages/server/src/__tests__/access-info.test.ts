@@ -229,6 +229,7 @@ describe("detectAccessInfo", () => {
     expect(info.source).toBe("tailscale");
     expect(info.fullUrl).toBe("https://quiz-host.tailnet.ts.net");
     expect(info.shortUrl).toBe("https://short.url/quiz");
+    expect(info.qrTargetUrl).toBe("https://short.url/quiz");
     expect(info.qrCodeDataUrl).toMatch(/^data:image\/png;base64,/);
     expect(info.warning).toBeUndefined();
     expect(typeof info.detectedAt).toBe("number");
@@ -248,6 +249,7 @@ describe("detectAccessInfo", () => {
     expect(info.source).toBe("lan-fallback");
     expect(info.fullUrl).toMatch(/^http:\/\/\d+\.\d+\.\d+\.\d+:4000$/);
     expect(info.shortUrl).toBe("");
+    expect(info.qrTargetUrl).toBe(info.fullUrl);
     expect(info.warning).toBeDefined();
     expect(info.warning).toContain("Tailscale unavailable");
   });
@@ -274,6 +276,7 @@ describe("detectAccessInfo", () => {
     // QR code should still be generated from the full URL
     expect(info.qrCodeDataUrl).toMatch(/^data:image\/png;base64,/);
     expect(info.shortUrl).toBe("");
+    expect(info.qrTargetUrl).toBe(info.fullUrl);
   });
 });
 
@@ -287,6 +290,7 @@ describe("getCachedAccessInfo / setCachedAccessInfo", () => {
       fullUrl: "https://test.ts.net",
       shortUrl: "https://t.ly/test",
       qrCodeDataUrl: "data:image/png;base64,abc",
+      qrTargetUrl: "https://t.ly/test",
       source: "tailscale" as const,
       detectedAt: Date.now(),
     };
@@ -299,6 +303,7 @@ describe("getCachedAccessInfo / setCachedAccessInfo", () => {
       fullUrl: "https://test.ts.net",
       shortUrl: "",
       qrCodeDataUrl: "",
+      qrTargetUrl: "https://test.ts.net",
       source: "tailscale",
       detectedAt: Date.now(),
     });
