@@ -187,8 +187,8 @@ describe("REST API", () => {
         .get(`/api/session/${createRes.body.sessionId}/access-info`)
         .expect(200);
 
-      expect(res.body.fullUrl).toContain(`/#/join/${createRes.body.sessionCode}`);
-      expect(res.body.qrTargetUrl).toContain(`/#/join/${createRes.body.sessionCode}`);
+      expect(res.body.fullUrl).toContain(`/join/${createRes.body.sessionCode}`);
+      expect(res.body.qrTargetUrl).toContain(`/join/${createRes.body.sessionCode}`);
     });
 
     it("allows LEADERBOARD -> REVEAL resume", async () => {
