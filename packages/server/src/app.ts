@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { API, Quiz, Session, SessionState } from "@md-quiz/shared";
+import { API, Quiz, Session, SessionState } from "@mdq/shared";
 import {
   createSession,
   storeSession,
@@ -43,19 +43,35 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
   // ── Quiz store ──────────────────────────────
   const quizzes = new Map<string, Quiz>();
 
-  // Load quizzes from directory if provided
-  if (quizDir && fs.existsSync(quizDir)) {
-    const files = fs.readdirSync(quizDir).filter((f) => f.match(/^week\d+-quiz\.md$/));
+  function loadQuizzesFromDir(dirPath: string): number {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+      return 0;
+    }
+    const files = fs.readdirSync(dirPath).filter((f) => f.match(/^week\d+-quiz\.md$/));
+    const next = new Map<string, Quiz>();
+
     for (const file of files) {
-      const md = fs.readFileSync(path.join(quizDir, file), "utf-8");
+      const md = fs.readFileSync(path.join(dirPath, file), "utf-8");
       const result = parseQuizMarkdown(md, file);
       if (result.quiz) {
-        quizzes.set(result.quiz.week, result.quiz);
+        next.set(result.quiz.week, result.quiz);
       }
       if (result.errors.length > 0) {
         console.warn(`Parse warnings for ${file}:`, result.errors.map((e) => e.message));
       }
     }
+
+    quizzes.clear();
+    for (const [week, quiz] of next.entries()) {
+      quizzes.set(week, quiz);
+    }
+    return quizzes.size;
+  }
+
+  // Load quizzes from directory if provided
+  if (quizDir) {
+    loadQuizzesFromDir(quizDir);
   }
 
   /** Helper to get quiz for a session */
@@ -88,6 +104,24 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
       questionCount: q.questions.length,
     }));
     res.json(list);
+  });
+
+  app.post(API.QUIZZES_RELOAD, (_req, res) => {
+    if (!quizDir) {
+      return res.status(400).json({ error: "Quiz directory is not configured" });
+    }
+    try {
+      const loaded = loadQuizzesFromDir(quizDir);
+      const list = [...quizzes.values()].map((q) => ({
+        week: q.week,
+        title: q.title,
+        questionCount: q.questions.length,
+      }));
+      return res.json({ loaded, quizzes: list });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to reload quizzes";
+      return res.status(500).json({ error: message });
+    }
   });
 
   app.get(API.QUIZ, (req, res) => {
@@ -310,6 +344,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
         fullUrl: `http://localhost:${process.env.PORT || 3000}`,
         shortUrl: "",
         qrCodeDataUrl: "",
+        qrTargetUrl: `http://localhost:${process.env.PORT || 3000}`,
         source: "lan-fallback",
         warning: "Access info not yet detected. Server may still be starting.",
         detectedAt: Date.now(),

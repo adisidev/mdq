@@ -1,4 +1,4 @@
-import { Quiz, Question, QuestionOption, DEFAULT_TIME_LIMIT_SEC } from "@md-quiz/shared";
+import { Quiz, Question, QuestionOption, DEFAULT_TIME_LIMIT_SEC } from "@mdq/shared";
 import { marked } from "marked";
 
 /** Error describing a problem in a specific question block */

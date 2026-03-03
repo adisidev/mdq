@@ -38,8 +38,10 @@ export default function App() {
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center gap-8 p-6">
       <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-white mb-2">md-quiz</h1>
-        <p className="text-zinc-400 text-lg">Classroom quiz platform</p>
+        <h1 className="text-4xl font-bold tracking-tight text-white mb-2">mdq</h1>
+        <p className="text-zinc-400 text-lg max-w-3xl mx-auto">
+          Design and manage your quizzes in clean, editable Markdown. No more clunky interfaces and proprietary nonsense. All you need is your computer and a free, secure private network like Tailscale.
+        </p>
       </div>
       <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
         <a

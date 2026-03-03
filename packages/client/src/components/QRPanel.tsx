@@ -3,13 +3,17 @@ export default function QRPanel({
   qrDataUrl,
   fullUrl,
   shortUrl,
+  qrTargetUrl,
   sessionCode,
 }: {
   qrDataUrl: string;
   fullUrl: string;
   shortUrl: string;
+  qrTargetUrl: string;
   sessionCode: string;
 }) {
+  const primaryUrl = shortUrl || fullUrl;
+
   return (
     <div className="flex flex-col items-center gap-6 p-6 bg-white rounded-2xl max-w-md mx-auto">
       {/* QR Code */}
@@ -33,17 +37,16 @@ export default function QRPanel({
 
       {/* URLs */}
       <div className="text-center space-y-1 w-full">
-        {shortUrl && (
-          <a
-            href={shortUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block text-indigo-600 font-semibold text-xl hover:underline break-all"
-          >
-            {shortUrl}
-          </a>
-        )}
-        <p className="text-zinc-400 text-sm break-all">{fullUrl}</p>
+        <a
+          href={primaryUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-indigo-600 font-semibold text-xl hover:underline break-all"
+        >
+          {primaryUrl}
+        </a>
+        {shortUrl && <p className="text-zinc-400 text-sm break-all">Fallback URL: {fullUrl}</p>}
+        <p className="text-zinc-400 text-xs break-all">QR points to: {qrTargetUrl}</p>
       </div>
     </div>
   );

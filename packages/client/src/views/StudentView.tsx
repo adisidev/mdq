@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSocket } from "../hooks/useSocket";
 import type { QuestionState, RevealState } from "../hooks/useSocket";
-import { API } from "@md-quiz/shared";
-import type { SessionState } from "@md-quiz/shared";
+import { API } from "@mdq/shared";
+import type { SessionState } from "@mdq/shared";
 import Timer from "../components/Timer";
 import Leaderboard from "../components/Leaderboard";
 

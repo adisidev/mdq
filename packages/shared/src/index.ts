@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────
-// md-quiz shared contracts
+// mdq shared contracts
 // Single source of truth for types, events, REST
 // paths, and session state transitions.
 // ──────────────────────────────────────────────
@@ -152,6 +152,7 @@ export interface SessionParticipantsPayload {
 export const API = {
   HEALTH: "/api/health",
   QUIZZES: "/api/quizzes",
+  QUIZZES_RELOAD: "/api/quizzes/reload",
   QUIZ: "/api/quiz/:week",
   SESSION_CREATE: "/api/session",
   SESSION_START: "/api/session/:id/start",
@@ -265,6 +266,7 @@ export interface AccessInfo {
   fullUrl: string;
   shortUrl: string;
   qrCodeDataUrl: string;
+  qrTargetUrl: string;
   source: "tailscale" | "lan-fallback";
   warning?: string;
   detectedAt: number;

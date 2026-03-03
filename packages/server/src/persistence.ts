@@ -7,7 +7,7 @@ import {
   CumulativeLeaderboardEntry,
   Quiz,
   DATA_DIR,
-} from "@md-quiz/shared";
+} from "@mdq/shared";
 import { computeLeaderboard } from "./session";
 
 // ── Directory layout ───────────────────────

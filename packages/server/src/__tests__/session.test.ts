@@ -8,7 +8,7 @@ import {
   computeLeaderboard,
   StateTransitionError,
 } from "../session";
-import { Session, SessionState, STATE_TRANSITIONS } from "@md-quiz/shared";
+import { Session, SessionState, STATE_TRANSITIONS } from "@mdq/shared";
 
 describe("Session Engine", () => {
   let session: Session;

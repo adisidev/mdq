@@ -1,5 +1,5 @@
 import { parseQuizMarkdown, QuizParseError } from "../parser";
-import { DEFAULT_TIME_LIMIT_SEC } from "@md-quiz/shared";
+import { DEFAULT_TIME_LIMIT_SEC } from "@mdq/shared";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -363,7 +363,7 @@ B. No
   });
 
   describe("sample quiz files", () => {
-    const quizDir = path.join(__dirname, "../../../../data/quizzes");
+    const quizDir = path.join(__dirname, "fixtures/quizzes");
 
     it("parses week01-quiz.md", () => {
       const md = fs.readFileSync(path.join(quizDir, "week01-quiz.md"), "utf-8");
