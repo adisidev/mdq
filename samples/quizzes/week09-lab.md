@@ -9,11 +9,11 @@ Run sequence: First Hand -> Open Brush -> Elixir -> Mission: ISS. There are 4 de
 In First Hand, you can see realistic virtual hands that move in sync with your real hand movements. You can directly touch buttons, grab objects, and even pull distant objects toward you with a "distance grab" gesture. Which factor most contributes to the sense of embodiment in this experience?
 
 A. High-resolution display panels
-B. Visuomotor synchrony
+B. Seeing virtual hands move exactly with your real hands
 C. Spatial audio from the environment
 D. The use of teleportation for locomotion
 
-> Correct Answer: B. Visuomotor synchrony
+> Correct Answer: B. Seeing virtual hands move exactly with your real hands
 > Overall Feedback: Embodiment is strongest when your seen body and felt movement stay tightly aligned. In First Hand, first-person visuomotor synchrony makes the virtual hands feel like your own more than display fidelity, audio, or locomotion style.
 
 ---

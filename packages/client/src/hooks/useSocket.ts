@@ -17,6 +17,7 @@ import { SocketEvents } from "@mdq/shared";
 
 // ── localStorage helpers ─────────────────────
 const STORAGE_KEY = "mdquiz_session";
+const CLIENT_INSTANCE_KEY = "mdquiz_client_instance_id";
 
 interface StoredSession {
   sessionId: string;
@@ -40,6 +41,19 @@ function saveStoredSession(data: StoredSession) {
 
 function clearStoredSession() {
   localStorage.removeItem(STORAGE_KEY);
+}
+
+function getClientInstanceId(): string {
+  const existing = localStorage.getItem(CLIENT_INSTANCE_KEY);
+  if (existing) {
+    return existing;
+  }
+  const generated =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  localStorage.setItem(CLIENT_INSTANCE_KEY, generated);
+  return generated;
 }
 
 // ── Socket state types ───────────────────────
@@ -98,7 +112,6 @@ export interface UseSocketReturn {
 export function useSocket(
   sessionId: string | null,
   role: "student" | "instructor",
-  instructorKey?: string,
 ): UseSocketReturn {
   const socketRef = useRef<Socket | null>(null);
   const answeredQuestionsRef = useRef<number[]>([]);
@@ -129,7 +142,7 @@ export function useSocket(
     if (!sessionId) return;
 
     const socket = io({
-      auth: { sessionId, role, instructorKey },
+      auth: { sessionId, role },
       query: { sessionId },
       transports: ["websocket", "polling"],
     });
@@ -147,6 +160,7 @@ export function useSocket(
           socket.emit(SocketEvents.STUDENT_JOIN, {
             studentId: stored.studentId,
             sessionToken: stored.sessionToken,
+            clientInstanceId: getClientInstanceId(),
           });
         }
       }
@@ -272,7 +286,7 @@ export function useSocket(
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [sessionId, role, instructorKey]);
+  }, [sessionId, role]);
 
   const joinSession = useCallback(
     (studentId: string, displayName?: string) => {
@@ -283,6 +297,7 @@ export function useSocket(
         studentId: studentId.trim(),
         displayName: displayName?.trim() || undefined,
         sessionToken: token,
+        clientInstanceId: getClientInstanceId(),
       });
       setStudentIdState(studentId.trim());
     },

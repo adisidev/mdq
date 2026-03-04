@@ -18,6 +18,11 @@ import {
   computeLeaderboard,
 } from "./session";
 import { Session } from "@mdq/shared";
+import {
+  isInstructorAuthEnabled,
+  getInstructorSessionFromCookie,
+  hasValidInstructorSession,
+} from "./instructor-auth";
 
 function logActivity(message: string): void {
   console.log(`[mdq activity] ${message}`);
@@ -204,7 +209,6 @@ function emitJoinStateSnapshot(socket: Socket, session: Session, isReconnect: bo
  */
 export function setupSocket(httpServer: HttpServer, quizzes: Map<string, Quiz>): Server {
   quizStore = quizzes;
-  const instructorKey = (process.env.INSTRUCTOR_KEY || "").trim();
 
   const io = new Server(httpServer, {
     cors: { origin: "*", methods: ["GET", "POST"] },
@@ -242,12 +246,14 @@ export function setupSocket(httpServer: HttpServer, quizzes: Map<string, Quiz>):
       || socket.handshake.query?.role as string;
 
     if (role === "instructor") {
-      const providedKey = socket.handshake.auth?.instructorKey as string | undefined;
-      if (instructorKey && providedKey !== instructorKey) {
-        socket.emit(SocketEvents.STUDENT_REJECTED, { reason: "Instructor key required" });
-        logActivity(`reject instructor socket=${socket.id} session=${sessionId} reason=bad-key`);
-        socket.disconnect();
-        return;
+      if (isInstructorAuthEnabled()) {
+        const sessionToken = getInstructorSessionFromCookie(socket.handshake.headers.cookie);
+        if (!sessionToken || !hasValidInstructorSession(sessionToken)) {
+          socket.emit(SocketEvents.STUDENT_REJECTED, { reason: "Instructor login required" });
+          logActivity(`reject instructor socket=${socket.id} session=${sessionId} reason=unauthenticated`);
+          socket.disconnect();
+          return;
+        }
       }
       socket.join(sessionRoom(sessionId));
       logActivity(`instructor connected session=${sessionId} socket=${socket.id}`);

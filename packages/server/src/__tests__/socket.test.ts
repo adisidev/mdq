@@ -1,6 +1,7 @@
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { io as ioClient, Socket as ClientSocket } from "socket.io-client";
+import request from "supertest";
 import { createApp } from "../app";
 import { setupSocket, clearSessionTimers, startQuestionTimer } from "../socket";
 import {
@@ -10,6 +11,7 @@ import {
   transitionState,
 } from "../session";
 import { SocketEvents, Quiz } from "@mdq/shared";
+import { clearInstructorSessionsForTests } from "../instructor-auth";
 import * as path from "path";
 import { AddressInfo } from "net";
 
@@ -1053,6 +1055,80 @@ describe("Socket.IO Integration", () => {
       clearSessionTimers(session.sessionId);
       instructor.disconnect();
       student.disconnect();
+    });
+  });
+
+  describe("instructor socket auth", () => {
+    const originalInstructorPassword = process.env.INSTRUCTOR_PASSWORD;
+
+    afterEach(() => {
+      if (typeof originalInstructorPassword === "string") {
+        process.env.INSTRUCTOR_PASSWORD = originalInstructorPassword;
+      } else {
+        delete process.env.INSTRUCTOR_PASSWORD;
+      }
+      clearInstructorSessionsForTests();
+      clearAllSessions();
+    });
+
+    it("rejects unauthenticated instructor socket when password is configured", async () => {
+      process.env.INSTRUCTOR_PASSWORD = "socket-secret";
+
+      const authApp = createApp(quizDir);
+      const authServer = createServer(authApp);
+      const authQuizzes = (authApp as unknown as { _quizzes: Map<string, Quiz> })._quizzes;
+      const authIo = setupSocket(authServer, authQuizzes);
+
+      await new Promise<void>((resolve) => authServer.listen(0, resolve));
+      try {
+        const authPort = (authServer.address() as AddressInfo).port;
+        const authBaseUrl = `http://localhost:${authPort}`;
+
+        const createRes = await request(authApp)
+          .post("/api/instructor/login")
+          .send({ password: "socket-secret" })
+          .expect(204);
+        const cookieHeader = createRes.headers["set-cookie"][0].split(";")[0];
+
+        const sessionRes = await request(authApp)
+          .post("/api/session")
+          .set("Cookie", cookieHeader)
+          .send({ week: "week01" })
+          .expect(201);
+
+        const unauthInstructor = ioClient(authBaseUrl, {
+          autoConnect: false,
+          auth: { sessionId: sessionRes.body.sessionId, role: "instructor" },
+          transports: ["websocket"],
+        });
+
+        const rejectedPromise = waitForEvent<{ reason: string }>(
+          unauthInstructor,
+          SocketEvents.STUDENT_REJECTED,
+        );
+
+        unauthInstructor.connect();
+        const rejected = await rejectedPromise;
+        expect(rejected.reason).toContain("login required");
+        unauthInstructor.disconnect();
+
+        const authInstructor = ioClient(authBaseUrl, {
+          autoConnect: false,
+          auth: { sessionId: sessionRes.body.sessionId, role: "instructor" },
+          transports: ["websocket"],
+          extraHeaders: { Cookie: cookieHeader },
+        });
+
+        await new Promise<void>((resolve) => {
+          authInstructor.once("connect", () => resolve());
+          authInstructor.connect();
+        });
+
+        authInstructor.disconnect();
+      } finally {
+        authIo.close();
+        await new Promise<void>((resolve) => authServer.close(() => resolve()));
+      }
     });
   });
 });

@@ -62,6 +62,7 @@ export interface StudentJoinPayload {
   studentId: string;
   displayName?: string;
   sessionToken?: string;
+  clientInstanceId?: string;
 }
 
 export interface StudentJoinedPayload {
@@ -151,6 +152,9 @@ export interface SessionParticipantsPayload {
 // ── REST API Paths ──────────────────────────
 export const API = {
   HEALTH: "/api/health",
+  INSTRUCTOR_LOGIN: "/api/instructor/login",
+  INSTRUCTOR_SESSION: "/api/instructor/session",
+  INSTRUCTOR_LOGOUT: "/api/instructor/logout",
   QUIZZES: "/api/quizzes",
   QUIZZES_RELOAD: "/api/quizzes/reload",
   QUIZ: "/api/quiz/:week",
@@ -203,6 +207,7 @@ export interface Participant {
   studentId: string;
   displayName?: string;
   sessionToken: string;
+  clientInstanceId?: string;
   socketId: string;
   joinedAt: number;
   connected: boolean;

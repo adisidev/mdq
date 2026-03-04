@@ -67,6 +67,7 @@ export function addParticipant(
   socketId: string,
   displayName?: string,
   sessionToken?: string,
+  clientInstanceId?: string,
 ): { participant: Participant; isReconnect: boolean } {
   const existing = session.participants.get(studentId);
 
@@ -76,8 +77,31 @@ export function addParticipant(
       // Valid reconnect
       existing.socketId = socketId;
       existing.connected = true;
+      if (displayName) {
+        existing.displayName = displayName;
+      }
+      if (clientInstanceId) {
+        existing.clientInstanceId = clientInstanceId;
+      }
       return { participant: existing, isReconnect: true };
     }
+
+    // Token-less reconnect fallback for same browser client only.
+    // This supports page-close/QR-rescan rejoin while blocking ID takeover.
+    if (
+      !existing.connected
+      && clientInstanceId
+      && existing.clientInstanceId
+      && clientInstanceId === existing.clientInstanceId
+    ) {
+      existing.socketId = socketId;
+      existing.connected = true;
+      if (displayName) {
+        existing.displayName = displayName;
+      }
+      return { participant: existing, isReconnect: true };
+    }
+
     // Different token or no token: conflict
     throw new Error(
       `Student ID "${studentId}" is already in use with a different session token.`,
@@ -89,6 +113,7 @@ export function addParticipant(
     studentId,
     displayName,
     sessionToken: uuidv4(),
+    clientInstanceId,
     socketId,
     joinedAt: Date.now(),
     connected: true,

@@ -7,26 +7,32 @@ import Timer from "../components/Timer";
 import Leaderboard from "../components/Leaderboard";
 
 export default function StudentView({ sessionCode }: { sessionCode?: string }) {
+  const normalizeSessionCode = useCallback(
+    (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6),
+    [],
+  );
+
   // Join form state
-  const [code, setCode] = useState(sessionCode || "");
+  const [code, setCode] = useState(normalizeSessionCode(sessionCode || ""));
   const [studentId, setStudentId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
   // Sync sessionCode prop to code state (prop may change without remount)
   useEffect(() => {
     if (sessionCode) {
-      setCode(sessionCode);
+      setCode(normalizeSessionCode(sessionCode));
     }
-  }, [sessionCode]);
+  }, [sessionCode, normalizeSessionCode]);
 
   // Clear error when user edits any input field
   const handleCodeChange = useCallback((val: string) => {
-    setCode(val.toUpperCase());
+    setCode(normalizeSessionCode(val));
     if (joinError) setJoinError(null);
-  }, [joinError]);
+  }, [joinError, normalizeSessionCode]);
 
   const handleStudentIdChange = useCallback((val: string) => {
     setStudentId(val);
@@ -43,28 +49,34 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
 
   // Try to restore session from localStorage on mount
   useEffect(() => {
-    if (sessionCode) {
-      try {
-        localStorage.removeItem("mdquiz_session");
-        localStorage.removeItem("mdquiz_pending_join");
-      } catch {
-        // ignore
-      }
-      return;
-    }
     try {
       const raw = localStorage.getItem("mdquiz_session");
       if (raw) {
         const stored = JSON.parse(raw);
-        if (stored.sessionId) {
+        if (!sessionCode && stored.sessionId) {
           setSessionId(stored.sessionId);
           setStudentId(stored.studentId || "");
+        }
+        if (sessionCode && stored.studentId) {
+          setStudentId(stored.studentId);
         }
       }
     } catch {
       // ignore
     }
+    setCompleted(false);
   }, [sessionCode]);
+
+  const handleDone = useCallback(() => {
+    try {
+      localStorage.removeItem("mdquiz_session");
+      localStorage.removeItem("mdquiz_pending_join");
+    } catch {
+      // ignore
+    }
+    sock.disconnect();
+    setCompleted(true);
+  }, [sock]);
 
   // Handle join: first resolve session code to sessionId, then connect socket
   const handleJoin = useCallback(async () => {
@@ -78,7 +90,8 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
 
     try {
       // Resolve session code to sessionId via REST endpoint
-      const res = await fetch(API.SESSION_BY_CODE.replace(":code", code.trim().toUpperCase()));
+      const normalizedCode = normalizeSessionCode(code);
+      const res = await fetch(API.SESSION_BY_CODE.replace(":code", normalizedCode));
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Session not found. Check the code and try again.");
@@ -94,13 +107,35 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
       // Also update the session store so page refreshes restore the session
       localStorage.setItem(
         "mdquiz_session",
-        JSON.stringify({ sessionId: data.sessionId, studentId: studentId.trim() }),
+        JSON.stringify({
+          sessionId: data.sessionId,
+          studentId: studentId.trim(),
+          sessionToken:
+            (() => {
+              try {
+                const existingRaw = localStorage.getItem("mdquiz_session");
+                if (!existingRaw) return undefined;
+                const existing = JSON.parse(existingRaw);
+                if (
+                  existing
+                  && existing.sessionId === data.sessionId
+                  && existing.studentId === studentId.trim()
+                  && typeof existing.sessionToken === "string"
+                ) {
+                  return existing.sessionToken;
+                }
+              } catch {
+                // ignore
+              }
+              return undefined;
+            })(),
+        }),
       );
     } catch (e) {
       setJoinError(e instanceof Error ? e.message : "Failed to join");
       setJoining(false);
     }
-  }, [code, studentId, displayName]);
+  }, [code, studentId, displayName, normalizeSessionCode]);
 
   // When socket connects and we have pending join, emit student:join
   useEffect(() => {
@@ -129,6 +164,15 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
       setJoining(false);
     }
   }, [sockError]);
+
+  if (completed) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <h2 className="text-2xl font-bold text-white">Done</h2>
+        <p className="text-zinc-400 text-sm max-w-md">Your session is complete. You can close this tab.</p>
+      </div>
+    );
+  }
 
   // ── Not yet connected: show join form ──
   if (!sock.sessionToken) {
@@ -259,12 +303,12 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
           maxRows={15}
         />
         {state === "ENDED" && (
-          <a
-            href="#/"
+          <button
+            onClick={handleDone}
             className="bg-zinc-800 hover:bg-zinc-700 text-white font-semibold py-3 px-8 rounded-xl transition-colors text-sm mt-4"
           >
             Done
-          </a>
+          </button>
         )}
       </div>
     );
@@ -298,7 +342,15 @@ function QuestionView({
 }) {
   const [selected, setSelected] = useState<string[]>([]);
 
-  if (!question) return null;
+  if (!question) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center p-6 text-center">
+        <p className="text-zinc-400">
+          {state === "QUESTION_CLOSED" ? "Waiting for next question..." : "Loading question..."}
+        </p>
+      </div>
+    );
+  }
 
   const toggleOption = (label: string) => {
     if (submitted || state === "QUESTION_CLOSED") return;
@@ -418,7 +470,7 @@ function RevealView({
   if (!question || !reveal) {
     return (
       <div className="min-h-dvh flex items-center justify-center p-6">
-        <p className="text-zinc-400">Waiting for results...</p>
+        <p className="text-zinc-400">Waiting for next question...</p>
       </div>
     );
   }

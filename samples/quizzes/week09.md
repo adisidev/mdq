@@ -12,6 +12,7 @@ C. Either approach works equally well for this use case
 D. Neither approach can support free exploration of a real building
 
 > Correct Answer: A. Model-based
+> Overall Feedback: Model-based VEs are best when users need free movement and viewpoint changes, because geometry is reconstructed and rendered from any angle. Image-based capture is faster, but typically constrains movement to captured viewpoints.
 
 ---
 
@@ -25,12 +26,13 @@ C. The images will not work inside an HMD
 D. Image-based scenes cannot include any audio
 
 > Correct Answer: A. Faster to produce, but users are limited to fixed viewpoints
+> Overall Feedback: Image-based content is quick to produce from photos or 360 capture, but interaction freedom is limited by the captured camera positions. You usually trade production speed for reduced navigation flexibility.
 
 ---
 
 ## Interaction Concepts: Interaction Authenticity
 
-In a VR fantasy workshop, learners turn a virtual crank by rotating their wrist as if using a real tool. They can also summon a shield by making a quick two-finger flick in mid-air. Which classification best matches these two interactions?
+In a VR workshop, a user turns a crank with wrist rotation, then summons a shield with a two-finger flick. Which classification best matches these two interactions?
 
 A. Crank turning is Natural Interaction, shield summon is Artificial (Magical) Interaction
 B. Crank turning is Augmented Natural Interaction, shield summon is Natural Interaction
@@ -38,19 +40,7 @@ C. Crank turning is Artificial (Magical) Interaction, shield summon is Augmented
 D. Both are Augmented Natural Interaction because both use hand movement
 
 > Correct Answer: A. Crank turning is Natural Interaction, shield summon is Artificial (Magical) Interaction
-
----
-
-## Hardware and Interaction: Bare-Hand Manipulation
-
-A design team wants users to pick up and inspect virtual pottery using their bare hands in VR. Which hardware capability is most essential to enable this interaction?
-
-A. High-resolution display panels
-B. Hand tracking with finger-level skeletal data
-C. Eye tracking for foveated rendering
-D. Spatial audio with head-related transfer functions
-
-> Correct Answer: B. Hand tracking with finger-level skeletal data
+> Overall Feedback: Natural Interaction maps closely to familiar real-world actions like turning a crank. Summoning a shield with a gesture has no real-world equivalent, so it is Artificial (Magical) Interaction.
 
 ---
 
@@ -64,6 +54,7 @@ C. Cybersickness: unrealistic motion always reduces immersion
 D. Fidelity: higher polygon counts increase presence
 
 > Correct Answer: B. Plausibility illusion: the scenario responds consistently to the player, like these events are really happening
+> Overall Feedback: Plausibility illusion is about the world reacting in a coherent, believable way to your actions, even if the mechanics are unrealistic. Consistent cause-and-effect can sustain immersion without physical realism.
 
 ---
 
@@ -76,6 +67,21 @@ B. Trainee grab a virtual extinguisher that can be aimed and triggered, with vir
 C. Trainee does a spell-casting gesture to conjure virtual foam
 
 > Correct Answer: B. Trainee grab a virtual extinguisher that can be aimed and triggered, with virtual foam that depletes over time
+> Overall Feedback: This option preserves key real extinguisher interaction cues while adding safe virtual constraints, so it supports skill transfer better than magical gestures or unrealistic unlimited resources. It balances realism and practical simulation design.
+
+---
+
+## Hardware and Interaction: Bare-Hand Manipulation
+
+A design team wants users to pick up and inspect virtual pottery using their bare hands in VR. Which hardware capability is most essential to enable this interaction?
+
+A. High-resolution display panels
+B. Hand tracking with finger-level skeletal data
+C. Eye tracking for foveated rendering
+D. Spatial audio with head-related transfer functions
+
+> Correct Answer: B. Hand tracking with finger-level skeletal data
+> Overall Feedback: Bare-hand manipulation depends on tracking hand and finger pose accurately enough to drive direct interaction. Display quality or audio can improve experience, but they do not enable hand-based grasping by themselves.
 
 ---
 
@@ -89,6 +95,7 @@ C. Difficulty in accurately perceiving the virtual saw blade's position
 D. High degree of embodiment via realistic hand representation and precise hand tracking
 
 > Correct Answer: D. High degree of embodiment via realistic hand representation and precise hand tracking
+> Overall Feedback: When users strongly embody a virtual body part, they react protectively to virtual threats as if the body part were their own. Accurate hand tracking and coherent visual representation strengthen this effect.
 
 ---
 
@@ -102,6 +109,7 @@ C. Walking-in-place (WIP) with HTC Vive HMD and trackers
 D. Tracking real movement in physical space
 
 > Correct Answer: C. Walking-in-place (WIP) with HTC Vive HMD and trackers
+> Overall Feedback: For action-adventure movement that feels active and near-natural while staying in limited space, WIP offers a good compromise between presence and safety. Teleportation is safer for comfort, but less continuous and less physically grounded.
 
 ---
 
@@ -116,6 +124,7 @@ D. Walking-in-place (WIP) with HTC Vive HMD and trackers
 E. Tracking real movement in physical space
 
 > Correct Answer: A. Teleportation
+> Overall Feedback: Over very long traversal distances, teleportation is usually the most comfort-friendly method because it avoids sustained visual-vestibular mismatch. Continuous speed augmentation tends to increase cybersickness risk.
 
 ---
 
@@ -128,6 +137,7 @@ B. Actions: register an OnPickTrigger on the button with an ExecuteCodeAction
 C. Observables: create a custom Observable and notify observers when the button is pressed
 
 > Correct Answer: B. Actions: register an OnPickTrigger on the button with an ExecuteCodeAction
+> Overall Feedback: Actions are ideal for direct event-response logic such as "when button is picked, run code." They are often the simplest choice for discrete trigger interactions.
 
 ---
 
@@ -140,6 +150,7 @@ B. Actions: register an OnPickTrigger with an ExecuteCodeAction that moves the b
 C. Observables: add an observer to onBeforeRenderObservable that tracks pointer position and repositions the beaker each frame
 
 > Correct Answer: A. Behaviours: attach a SixDofDragBehavior to the beaker mesh
+> Overall Feedback: Behaviours package reusable interaction logic directly on objects, which is perfect for drag-and-manipulate tasks. A built-in drag behaviour is cleaner than manually recreating drag logic every frame.
 
 ---
 
@@ -152,6 +163,7 @@ B. Actions: register an OnIntersectionEnterTrigger on invisible spheres at fixed
 C. Observables: add an observer to scene.onBeforeRenderObservable that computes distance each frame and notifies a custom Observable
 
 > Correct Answer: C. Observables: add an observer to scene.onBeforeRenderObservable that computes distance each frame and notifies a custom Observable
+> Overall Feedback: Observables fit continuous per-frame monitoring because they hook naturally into render-loop updates. Actions are event-based, while this case needs ongoing distance computation.
 
 ---
 
@@ -177,6 +189,7 @@ C. Sets the minimum delay between each teleportation trigger
 D. Sets the time to hold the button before teleportation triggers
 
 > Correct Answer: D. Sets the time to hold the button before teleportation triggers
+> Overall Feedback: `timeToTeleport` defines a hold duration threshold before teleport activates, which helps reduce accidental jumps. It is a dwell-time control, not an animation duration parameter.
 
 ---
 
@@ -189,5 +202,6 @@ B. GUI on a floating holographic panel anchored in the virtual workspace
 C. Real-world quiz on real paper (take off the HMD when interacting)
 
 > Correct Answer: A. Diegetic GUI on a virtual clipboard and pen, mirroring real maintenance checklists
+> Overall Feedback: Diegetic UI keeps interaction inside the training world and closely mirrors real maintenance workflows, which supports realism and transfer. Floating or out-of-world interfaces can be useful but are less authentic for this scenario.
 
 ---
