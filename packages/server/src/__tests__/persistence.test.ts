@@ -5,12 +5,16 @@ import {
   saveSessionSnapshot,
   saveSubmissions,
   saveResultsCsv,
+  persistSessionProgressOnReveal,
   saveWeeklyResult,
   loadWeeklyResult,
   loadAllWeeklyResults,
   computeCumulativeLeaderboard,
   computeCumulativeFromResults,
   persistSessionOnEnd,
+  saveSessionSummaryMarkdown,
+  getSessionResultsCsvPath,
+  getSessionSummaryMarkdownPath,
 } from "../persistence";
 import {
   createSession,
@@ -127,6 +131,23 @@ describe("Persistence", () => {
   });
 
   describe("saveResultsCsv", () => {
+    it("resolves default artifact paths to repo-level data/submissions", () => {
+      const session = createSession("week01", "open");
+      const cwdSpy = jest.spyOn(process, "cwd").mockReturnValue(path.resolve(__dirname, "../.."));
+
+      try {
+        const csvPath = getSessionResultsCsvPath(session);
+        const summaryPath = getSessionSummaryMarkdownPath(session);
+        const expectedDir = path.resolve(__dirname, "../../../../data/submissions");
+
+        expect(path.dirname(csvPath)).toBe(expectedDir);
+        expect(path.dirname(summaryPath)).toBe(expectedDir);
+        expect(csvPath).not.toContain(path.join("packages", "server", "data", "submissions"));
+      } finally {
+        cwdSpy.mockRestore();
+      }
+    });
+
     it("writes per-student CSV with one row per studentId", () => {
       const session = createSession("week01", "open");
       const quiz = makeQuiz("week01", 2);
@@ -151,18 +172,80 @@ describe("Persistence", () => {
 
       saveResultsCsv(session, quiz, tempDir);
 
-      const csvPath = path.join(tempDir, "submissions", `${session.sessionId}.csv`);
+      const csvPath = getSessionResultsCsvPath(session, tempDir);
       expect(fs.existsSync(csvPath)).toBe(true);
 
       const lines = fs.readFileSync(csvPath, "utf-8").trim().split("\n");
       expect(lines.length).toBe(3); // header + s001 + s002
       expect(lines[0]).toContain("student_id");
+      expect(lines[0]).toContain("q1_revealed_at_iso");
       expect(lines[0]).toContain("q1_selected");
+      expect(lines[0]).toContain("q1_answered_at_iso");
       expect(lines[0]).toContain("q2_correct");
 
       const s001Rows = lines.filter((line) => line.includes(",s001,"));
       expect(s001Rows).toHaveLength(1);
       expect(s001Rows[0]).toContain("present");
+    });
+
+    it("persists reveal timestamp and answer timestamp columns", () => {
+      const session = createSession("week01", "open");
+      const quiz = makeQuiz("week01", 1);
+
+      addParticipant(session, "s001", "sock1", "Alice");
+      transitionState(session, "QUESTION_OPEN");
+      session.currentQuestionIndex = 0;
+
+      const revealAt = Date.parse("2026-03-04T09:10:11.000Z");
+      persistSessionProgressOnReveal(session, quiz, tempDir, revealAt);
+
+      session.questionStartedAt = revealAt - 1000;
+      const originalNow = Date.now;
+      try {
+        Date.now = () => Date.parse("2026-03-04T09:10:12.000Z");
+        recordSubmission(session, "s001", 0, ["A"]);
+      } finally {
+        Date.now = originalNow;
+      }
+
+      saveResultsCsv(session, quiz, tempDir);
+
+      const csvPath = getSessionResultsCsvPath(session, tempDir);
+      const [headerLine, rowLine] = fs.readFileSync(csvPath, "utf-8").trim().split("\n");
+      const headers = headerLine.split(",");
+      const row = rowLine.split(",");
+      const revealIdx = headers.indexOf("q1_revealed_at_iso");
+      const answeredIdx = headers.indexOf("q1_answered_at_iso");
+
+      expect(revealIdx).toBeGreaterThan(-1);
+      expect(answeredIdx).toBeGreaterThan(-1);
+      expect(row[revealIdx]).toBe("2026-03-04T09:10:11.000Z");
+      expect(row[answeredIdx]).toBe("2026-03-04T09:10:12.000Z");
+    });
+
+    it("returns created on first write, then updated", () => {
+      const { session, quiz } = setupSessionWithData();
+
+      const firstWrite = saveResultsCsv(session, quiz, tempDir);
+      const secondWrite = saveResultsCsv(session, quiz, tempDir);
+
+      expect(firstWrite.action).toBe("created");
+      expect(secondWrite.action).toBe("updated");
+      expect(firstWrite.filePath).toBe(secondWrite.filePath);
+      expect(firstWrite.rowCount).toBe(3);
+      expect(firstWrite.questionCount).toBe(2);
+    });
+
+    it("returns skipped when reveal question index is out of range", () => {
+      const session = createSession("week01", "open");
+      const quiz = makeQuiz("week01", 1);
+      session.currentQuestionIndex = 3;
+
+      const result = persistSessionProgressOnReveal(session, quiz, tempDir);
+
+      expect(result.status).toBe("skipped");
+      expect(result.reason).toContain("question_index_out_of_range");
+      expect(fs.existsSync(path.join(tempDir, "submissions"))).toBe(false);
     });
   });
 
@@ -326,7 +409,8 @@ describe("Persistence", () => {
 
       expect(fs.existsSync(path.join(tempDir, "sessions", `${session.sessionId}.json`))).toBe(true);
       expect(fs.existsSync(path.join(tempDir, "submissions", `${session.sessionId}.json`))).toBe(true);
-      expect(fs.existsSync(path.join(tempDir, "submissions", `${session.sessionId}.csv`))).toBe(true);
+      expect(fs.existsSync(getSessionResultsCsvPath(session, tempDir))).toBe(true);
+      expect(fs.existsSync(getSessionSummaryMarkdownPath(session, tempDir))).toBe(true);
       expect(fs.existsSync(path.join(tempDir, "winners", "week01.json"))).toBe(true);
     });
 
@@ -355,6 +439,40 @@ describe("Persistence", () => {
       expect(fs.existsSync(path.join(tempDir, "winners", "week01.json"))).toBe(true);
       
       consoleSpy.mockRestore();
+    });
+
+    it("logs csv_created when end-of-session write creates the CSV", () => {
+      const { session, quiz } = setupSessionWithData();
+      const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
+
+      try {
+        persistSessionOnEnd(session, quiz, tempDir);
+
+        const endCsvLogCall = consoleLogSpy.mock.calls.find(
+          (call) => call.join(" ").includes("csv_created") && !call.join(" ").includes("reveal_q="),
+        );
+
+        expect(endCsvLogCall).toBeDefined();
+        expect(endCsvLogCall?.join(" ")).toContain(`session=${session.sessionId}`);
+        expect(endCsvLogCall?.join(" ")).toContain(`code=${session.sessionCode}`);
+        expect(endCsvLogCall?.join(" ")).toContain("path=");
+      } finally {
+        consoleLogSpy.mockRestore();
+      }
+    });
+
+    it("includes leaderboard summary section in markdown", () => {
+      const { session, quiz } = setupSessionWithData();
+      saveSessionSummaryMarkdown(session, quiz, tempDir);
+
+      const summaryPath = getSessionSummaryMarkdownPath(session, tempDir);
+      const summary = fs.readFileSync(summaryPath, "utf-8");
+
+      expect(summary).toContain("## Leaderboard Summary");
+      expect(summary).toContain("- Ranked Participants: 3");
+      expect(summary).toContain("- Winner: s001 (Alice), score 2/2");
+      expect(summary).toContain("| Rank | Student ID | Name | Correct | Total Time (ms) |");
+      expect(summary).toContain("| 1 | s001 | Alice | 2/2 |");
     });
   });
 });

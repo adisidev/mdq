@@ -170,6 +170,33 @@ describe("Session Engine", () => {
       addParticipant(session, "S001", "sock1");
       expect(() => addParticipant(session, "S001", "sock2")).toThrow(/already in use/);
     });
+
+    it("allows token-less reconnect when same client instance rejoins", () => {
+      const { participant } = addParticipant(session, "S001", "sock1", "Alice", undefined, "client-a");
+      participant.connected = false;
+
+      const { participant: rejoined, isReconnect } = addParticipant(
+        session,
+        "S001",
+        "sock2",
+        undefined,
+        undefined,
+        "client-a",
+      );
+
+      expect(isReconnect).toBe(true);
+      expect(rejoined.socketId).toBe("sock2");
+      expect(rejoined.connected).toBe(true);
+    });
+
+    it("rejects token-less reconnect from different client instance", () => {
+      const { participant } = addParticipant(session, "S001", "sock1", "Alice", undefined, "client-a");
+      participant.connected = false;
+
+      expect(() =>
+        addParticipant(session, "S001", "sock2", undefined, undefined, "client-b"),
+      ).toThrow(/already in use/);
+    });
   });
 
   describe("submissions", () => {

@@ -25,7 +25,6 @@ import QRPanel from "../components/QRPanel";
 type InstructorPhase = "setup" | "lobby" | "live" | "ended";
 
 export default function InstructorView() {
-  const instructorKey = (import.meta as { env?: { VITE_INSTRUCTOR_KEY?: string } }).env?.VITE_INSTRUCTOR_KEY || "";
   // Setup state
   const [quizzes, setQuizzes] = useState<QuizSummary[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string>("");
@@ -39,7 +38,7 @@ export default function InstructorView() {
   const [totalQuestionsInQuiz, setTotalQuestionsInQuiz] = useState(0);
 
   // Socket connection (instructor role)
-  const sock = useSocket(sessionInfo?.sessionId ?? null, "instructor", instructorKey);
+  const sock = useSocket(sessionInfo?.sessionId ?? null, "instructor");
 
   // Derive phase from socket session state
   useEffect(() => {

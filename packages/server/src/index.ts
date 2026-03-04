@@ -13,8 +13,18 @@ import { getDistribution } from "./session";
 import * as path from "path";
 import * as fs from "fs";
 import express from "express";
+import type { AddressInfo } from "net";
+import { randomUUID } from "crypto";
 
-const port = parseInt(process.env.PORT || String(DEFAULT_PORT), 10);
+function parsePort(raw: string | undefined, fallback: number): number {
+  const parsed = parseInt(raw || "", 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+const requestedPort = parsePort(process.env.PORT, DEFAULT_PORT);
+const DEFAULT_PORT_FALLBACKS = 10;
+const maxPortFallbacks = parsePort(process.env.PORT_FALLBACKS, DEFAULT_PORT_FALLBACKS);
+const instanceId = (process.env.MDQ_INSTANCE_ID || "").trim() || randomUUID();
 const quizDir = process.env.QUIZ_DIR || path.resolve(__dirname, "../../../data/quizzes");
 const clientDist = path.join(__dirname, "../../client/dist");
 
@@ -28,6 +38,7 @@ function sessionRoom(sessionId: string): string {
 
 const app = createApp({
   quizDir,
+  instanceId,
   onStateChange: (session: Session, sessionId: string, newState: SessionState, quiz?: Quiz) => {
     const io = ioRef.current;
     if (!io) return;
@@ -102,13 +113,21 @@ if (fs.existsSync(clientDist)) {
   });
 }
 
-httpServer.listen(port, async () => {
-  console.log(`mdq server listening on port ${port}`);
+async function onListening(): Promise<void> {
+  const address = httpServer.address();
+  const boundPort = typeof address === "object" && address ? (address as AddressInfo).port : requestedPort;
+  const usedFallbackPort = boundPort !== requestedPort;
+
+  console.log(`mdq server listening on port ${boundPort} (instance ${instanceId})`);
+  if (usedFallbackPort) {
+    console.log(`Requested port ${requestedPort} unavailable, using fallback port ${boundPort}`);
+  }
+  console.log(`Port fallback retry limit: ${maxPortFallbacks}`);
   console.log(`Quiz directory: ${quizDir}`);
 
   // Detect access info (Tailscale/LAN) on startup
   try {
-    const info = await detectAccessInfo(port);
+    const info = await detectAccessInfo(boundPort);
     console.log(`Access URL: ${info.fullUrl} (source: ${info.source})`);
     if (info.shortUrl) {
       console.log(`Short URL: ${info.shortUrl}`);
@@ -116,7 +135,86 @@ httpServer.listen(port, async () => {
     if (info.warning) {
       console.warn(`Warning: ${info.warning}`);
     }
+
+    if (usedFallbackPort && info.source === "tailscale") {
+      const healthUrl = `${info.fullUrl}/api/health`;
+      try {
+        const response = await fetch(healthUrl, { signal: AbortSignal.timeout(5000) });
+        const payloadUnknown = await response.json().catch(() => ({}));
+        const payload =
+          payloadUnknown && typeof payloadUnknown === "object"
+            ? (payloadUnknown as { instanceId?: unknown })
+            : {};
+        const publicInstanceId =
+          typeof payload.instanceId === "string" ? payload.instanceId : "";
+
+        if (!response.ok || !publicInstanceId) {
+          console.error(
+            `Unsafe fallback detected: unable to verify public host ${healthUrl} for instance consistency while running on fallback port ${boundPort}.`
+          );
+          console.error("Refusing to continue to avoid split-brain sessions. Free the requested port and restart.");
+          httpServer.close(() => {
+            process.exit(1);
+          });
+          return;
+        }
+
+        if (publicInstanceId !== instanceId) {
+          console.error(
+            `Unsafe fallback detected: public host ${info.fullUrl} resolves to instance ${publicInstanceId}, but this process is instance ${instanceId} on port ${boundPort}.`
+          );
+          console.error("Refusing to continue to avoid split-brain sessions. Stop the old process on the public port and restart.");
+          httpServer.close(() => {
+            process.exit(1);
+          });
+          return;
+        }
+
+        console.log(`Verified public host routes to this instance (${instanceId}) after fallback.`);
+      } catch (error) {
+        console.error(
+          `Unsafe fallback detected: failed to verify public host ${healthUrl} while running on fallback port ${boundPort}.`
+        );
+        console.error("Refusing to continue to avoid split-brain sessions. Free the requested port and restart.");
+        if (error instanceof Error) {
+          console.error(`Verification error: ${error.message}`);
+        }
+        httpServer.close(() => {
+          process.exit(1);
+        });
+        return;
+      }
+    }
   } catch (e) {
     console.error("Failed to detect access info:", e);
   }
-});
+}
+
+function startWithPortFallback(portToTry: number, fallbackCount: number): void {
+  const handleListening = (): void => {
+    httpServer.off("error", handleError);
+    void onListening();
+  };
+
+  const handleError = (error: NodeJS.ErrnoException): void => {
+    httpServer.off("listening", handleListening);
+
+    if (error.code === "EADDRINUSE" && fallbackCount < maxPortFallbacks) {
+      const nextPort = portToTry + 1;
+      console.warn(
+        `Port ${portToTry} is already in use, retrying on port ${nextPort} (${fallbackCount + 1}/${maxPortFallbacks})`
+      );
+      startWithPortFallback(nextPort, fallbackCount + 1);
+      return;
+    }
+
+    console.error(`Failed to start mdq server on port ${portToTry}:`, error);
+    process.exitCode = 1;
+  };
+
+  httpServer.once("listening", handleListening);
+  httpServer.once("error", handleError);
+  httpServer.listen(portToTry);
+}
+
+startWithPortFallback(requestedPort, 0);

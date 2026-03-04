@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import InstructorView from "./views/InstructorView";
 import StudentView from "./views/StudentView";
+import { fetchInstructorSessionStatus, loginInstructor } from "./hooks/api";
 
 const DEFAULT_INSTRUCTOR_ROUTE_SEGMENT = "instructor";
 
@@ -39,7 +40,7 @@ export default function App() {
   }, []);
 
   if (route.page === "instructor") {
-    return <InstructorView />;
+    return <InstructorGate />;
   }
 
   if (route.page === "join" || route.page === "student") {
@@ -52,7 +53,14 @@ export default function App() {
       <div className="text-center">
         <h1 className="text-4xl font-bold tracking-tight text-white mb-2">mdq</h1>
         <p className="text-zinc-400 text-lg max-w-3xl mx-auto">
-          Design and manage your quizzes in clean, editable Markdown. No more clunky interfaces and proprietary nonsense. All you need is your computer and a free, secure private network like Tailscale.
+          MCQs are passe. Enter <span className="font-semibold text-indigo-300">MDQ</span>s.
+          <span className="font-medium text-zinc-200">
+            {" "}Human- and agent-friendly <span className="text-indigo-300">M</span>ark<span className="text-indigo-300">D</span>own <span className="text-indigo-300">Q</span>uizzes.
+          </span>
+          <br />
+          <span className="text-zinc-300">No clunky interfaces. No proprietary nonsense.</span>
+          <br />
+          <span className="text-zinc-400">Just your own machine and a public secure tunnel (like Tailscale).</span>
         </p>
       </div>
       <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
@@ -68,6 +76,97 @@ export default function App() {
         >
           Student
         </a>
+      </div>
+    </div>
+  );
+}
+
+function InstructorGate() {
+  const [checking, setChecking] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchInstructorSessionStatus()
+      .then((status) => {
+        setAuthenticated(status.authenticated);
+      })
+      .catch(() => {
+        setError("Unable to verify instructor access.");
+      })
+      .finally(() => setChecking(false));
+  }, []);
+
+  if (checking) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center p-6 text-zinc-300">
+        Checking instructor access...
+      </div>
+    );
+  }
+
+  if (authenticated) {
+    return <InstructorView />;
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await loginInstructor(password);
+      setAuthenticated(true);
+      setPassword("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Login failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="min-h-dvh flex flex-col items-center justify-center gap-8 p-6">
+      <div className="w-full max-w-md space-y-6">
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold text-white">Instructor Login</h1>
+          <p className="text-zinc-400">Enter the instructor password to access session controls.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <label htmlFor="instructor-password" className="block text-sm font-medium text-zinc-300">
+            Password
+          </label>
+          <input
+            id="instructor-password"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            autoComplete="current-password"
+            required
+          />
+
+          {error && <p className="text-sm text-red-300">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={submitting || !password}
+            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white font-semibold py-3 rounded-xl transition-colors"
+          >
+            {submitting ? "Signing in..." : "Sign In"}
+          </button>
+        </form>
+
+        <div className="flex items-center justify-between text-sm">
+          <a href="#/" className="text-zinc-400 hover:text-zinc-200">
+            Back home
+          </a>
+          <a href="#/join/" className="text-zinc-400 hover:text-zinc-200">
+            Go to quiz join
+          </a>
+        </div>
       </div>
     </div>
   );

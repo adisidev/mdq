@@ -11,8 +11,21 @@ import {
   computeLeaderboard,
 } from "./session";
 import { parseQuizMarkdown } from "./parser";
-import { persistSessionOnEnd, computeCumulativeLeaderboard } from "./persistence";
+import {
+  persistSessionOnEnd,
+  computeCumulativeLeaderboard,
+  persistSessionProgressOnReveal,
+} from "./persistence";
 import { getCachedAccessInfo, generateQrDataUrl, generateShortUrl } from "./access-info";
+import {
+  INSTRUCTOR_SESSION_COOKIE,
+  isInstructorAuthEnabled,
+  verifyInstructorPassword,
+  createInstructorSession,
+  revokeInstructorSession,
+  getInstructorSessionFromCookie,
+  hasValidInstructorSession,
+} from "./instructor-auth";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -28,18 +41,18 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
   const app = express();
   app.use(cors());
   app.use(express.json());
-  const instructorKey = (process.env.INSTRUCTOR_KEY || "").trim();
-
-  function requireInstructorKey(req: express.Request, res: express.Response, next: express.NextFunction): void {
-    if (!instructorKey) {
+  function requireInstructorAuth(req: express.Request, res: express.Response, next: express.NextFunction): void {
+    if (!isInstructorAuthEnabled()) {
       next();
       return;
     }
-    const provided = req.header("x-instructor-key") || "";
-    if (provided !== instructorKey) {
-      res.status(403).json({ error: "Instructor key required" });
+
+    const sessionToken = getInstructorSessionFromCookie(req.header("cookie"));
+    if (!sessionToken || !hasValidInstructorSession(sessionToken)) {
+      res.status(401).json({ error: "Instructor login required" });
       return;
     }
+
     next();
   }
 
@@ -160,6 +173,49 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
     });
   });
 
+  app.get(API.INSTRUCTOR_SESSION, (req, res) => {
+    if (!isInstructorAuthEnabled()) {
+      return res.json({ authenticated: true, configured: false });
+    }
+    const sessionToken = getInstructorSessionFromCookie(req.header("cookie"));
+    return res.json({
+      authenticated: !!sessionToken && hasValidInstructorSession(sessionToken),
+      configured: true,
+    });
+  });
+
+  app.post(API.INSTRUCTOR_LOGIN, (req, res) => {
+    if (!isInstructorAuthEnabled()) {
+      return res.status(400).json({ error: "Instructor password is not configured" });
+    }
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    if (!verifyInstructorPassword(password)) {
+      return res.status(401).json({ error: "Invalid instructor password" });
+    }
+
+    const token = createInstructorSession();
+    const forwardedProto = req.get("x-forwarded-proto");
+    const protocol = (forwardedProto ? forwardedProto.split(",")[0] : req.protocol) || "http";
+    const secure = protocol === "https";
+
+    res.cookie(INSTRUCTOR_SESSION_COOKIE, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure,
+      path: "/",
+    });
+    return res.status(204).send();
+  });
+
+  app.post(API.INSTRUCTOR_LOGOUT, (req, res) => {
+    const sessionToken = getInstructorSessionFromCookie(req.header("cookie"));
+    if (sessionToken) {
+      revokeInstructorSession(sessionToken);
+    }
+    res.clearCookie(INSTRUCTOR_SESSION_COOKIE, { path: "/" });
+    return res.status(204).send();
+  });
+
   // ── Quiz endpoints ────────────────────────
   app.get(API.QUIZZES, (_req, res) => {
     const list = [...quizzes.values()].map((q) => ({
@@ -170,7 +226,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
     res.json(list);
   });
 
-  app.post(API.QUIZZES_RELOAD, requireInstructorKey, (_req, res) => {
+  app.post(API.QUIZZES_RELOAD, requireInstructorAuth, (_req, res) => {
     if (!quizDir) {
       return res.status(400).json({ error: "Quiz directory is not configured" });
     }
@@ -201,7 +257,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
   });
 
   // ── Session lifecycle ─────────────────────
-  app.post(API.SESSION_CREATE, requireInstructorKey, (req, res) => {
+  app.post(API.SESSION_CREATE, requireInstructorAuth, (req, res) => {
     const { week, mode = "open" } = req.body;
     if (!week) {
       return res.status(400).json({ error: "Missing required field: week" });
@@ -248,7 +304,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
     callback(session);
   }
 
-  app.post(API.SESSION_START, requireInstructorKey, (req, res) => {
+  app.post(API.SESSION_START, requireInstructorAuth, (req, res) => {
     withSession(req, res, (session) => {
       try {
         transitionState(session, "QUESTION_OPEN");
@@ -267,7 +323,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
     });
   });
 
-  app.post(API.SESSION_NEXT, requireInstructorKey, (req, res) => {
+  app.post(API.SESSION_NEXT, requireInstructorAuth, (req, res) => {
     withSession(req, res, (session) => {
       const quiz = getQuizForSession(session.week);
       if (!quiz) {
@@ -293,7 +349,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
     });
   });
 
-  app.post(API.SESSION_CLOSE, requireInstructorKey, (req, res) => {
+  app.post(API.SESSION_CLOSE, requireInstructorAuth, (req, res) => {
     withSession(req, res, (session) => {
       try {
         transitionState(session, "QUESTION_CLOSED");
@@ -310,11 +366,33 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
     });
   });
 
-  app.post(API.SESSION_REVEAL, requireInstructorKey, (req, res) => {
+  app.post(API.SESSION_REVEAL, requireInstructorAuth, (req, res) => {
     withSession(req, res, (session) => {
       try {
         transitionState(session, "REVEAL");
         const quiz = getQuizForSession(session.week);
+
+        if (quiz) {
+          try {
+            const revealPersistence = persistSessionProgressOnReveal(session, quiz, dataDir);
+            if (revealPersistence.status === "written" && revealPersistence.csv) {
+              console.log(
+                `[mdq persistence] session=${session.sessionId} code=${session.sessionCode} reveal_q=${revealPersistence.questionIndex + 1} csv_${revealPersistence.csv.action} path=${revealPersistence.csv.filePath} rows=${revealPersistence.csv.rowCount} questions=${revealPersistence.csv.questionCount}`,
+              );
+            } else {
+              console.warn(
+                `[mdq persistence] session=${session.sessionId} code=${session.sessionCode} reveal_q=${revealPersistence.questionIndex + 1} csv_skipped reason=${revealPersistence.reason || "unknown"}`,
+              );
+            }
+          } catch (e) {
+            console.error(`Failed to persist reveal progress for ${session.sessionId}:`, e);
+          }
+        } else {
+          console.warn(
+            `[mdq persistence] session=${session.sessionId} code=${session.sessionCode} csv_skipped reason=quiz_not_found week=${session.week}`,
+          );
+        }
+
         notifyStateChange(session, req.params.id, quiz);
         logActivity(`instructor reveal session=${req.params.id} q=${session.currentQuestionIndex} state=${session.state}`);
         res.json({ state: session.state, questionIndex: session.currentQuestionIndex });
@@ -327,7 +405,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
     });
   });
 
-  app.post(API.SESSION_END, requireInstructorKey, (req, res) => {
+  app.post(API.SESSION_END, requireInstructorAuth, (req, res) => {
     withSession(req, res, (session) => {
       try {
         // Allow ending from LEADERBOARD or REVEAL
@@ -360,7 +438,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
   });
 
   // Show leaderboard (REVEAL -> LEADERBOARD, without ending)
-  app.post(API.SESSION_LEADERBOARD_SHOW, requireInstructorKey, (req, res) => {
+  app.post(API.SESSION_LEADERBOARD_SHOW, requireInstructorAuth, (req, res) => {
     withSession(req, res, (session) => {
       try {
         if (session.state === "QUESTION_CLOSED") {
@@ -381,7 +459,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
   });
 
   // Hide leaderboard (LEADERBOARD -> REVEAL, continue quiz flow)
-  app.post(API.SESSION_LEADERBOARD_HIDE, requireInstructorKey, (req, res) => {
+  app.post(API.SESSION_LEADERBOARD_HIDE, requireInstructorAuth, (req, res) => {
     withSession(req, res, (session) => {
       try {
         const quiz = getQuizForSession(session.week);
@@ -459,7 +537,7 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
     }
   });
 
-  app.get(API.SESSION_ACCESS_INFO, requireInstructorKey, async (req, res) => {
+  app.get(API.SESSION_ACCESS_INFO, requireInstructorAuth, async (req, res) => {
     const session = getSession(req.params.id);
     if (!session) {
       return res.status(404).json({ error: "Session not found" });

@@ -11,10 +11,16 @@ import {
 } from "@mdq/shared";
 import { computeLeaderboard } from "./session";
 
+const sessionRevealTimestamps = new Map<string, Map<number, number>>();
+const DEFAULT_DATA_DIR = path.resolve(__dirname, "../../../", DATA_DIR);
+
 // ── Directory layout ───────────────────────
 
 function resolveDataDir(baseDir?: string): string {
-  return baseDir || path.resolve(process.cwd(), DATA_DIR);
+  if (baseDir && baseDir.trim().length > 0) {
+    return path.resolve(baseDir);
+  }
+  return DEFAULT_DATA_DIR;
 }
 
 function ensureDir(dirPath: string): void {
@@ -29,6 +35,64 @@ function sessionsDir(baseDir?: string): string {
 
 function submissionsDir(baseDir?: string): string {
   return path.join(resolveDataDir(baseDir), "submissions");
+}
+
+function formatFileDateTime(timestampMs: number): string {
+  const d = new Date(timestampMs);
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const min = String(d.getUTCMinutes()).padStart(2, "0");
+  const ss = String(d.getUTCSeconds()).padStart(2, "0");
+  return `${yyyy}${mm}${dd}-${hh}${min}${ss}`;
+}
+
+function sanitizeFileToken(value: string): string {
+  const cleaned = value.replace(/[^A-Za-z0-9_-]/g, "");
+  return cleaned || "session";
+}
+
+function sessionArtifactPrefix(session: Session): string {
+  return `${sanitizeFileToken(session.sessionCode)}-${formatFileDateTime(session.createdAt)}`;
+}
+
+export function getSessionResultsCsvPath(session: Session, baseDir?: string): string {
+  return path.join(submissionsDir(baseDir), `${sessionArtifactPrefix(session)}.csv`);
+}
+
+export function getSessionSummaryMarkdownPath(session: Session, baseDir?: string): string {
+  return path.join(submissionsDir(baseDir), `${sessionArtifactPrefix(session)}-summary.md`);
+}
+
+function toIso(ts?: number): string {
+  return typeof ts === "number" ? new Date(ts).toISOString() : "";
+}
+
+function formatSecondsFromMs(ms: number): string {
+  return `${(Math.max(0, ms) / 1000).toFixed(2)}s`;
+}
+
+function getRevealTimestampMap(sessionId: string): Map<number, number> {
+  if (!sessionRevealTimestamps.has(sessionId)) {
+    sessionRevealTimestamps.set(sessionId, new Map<number, number>());
+  }
+  return sessionRevealTimestamps.get(sessionId)!;
+}
+
+export function markQuestionRevealed(
+  session: Session,
+  questionIndex: number,
+  revealedAt = Date.now(),
+): void {
+  if (questionIndex < 0) {
+    return;
+  }
+  getRevealTimestampMap(session.sessionId).set(questionIndex, revealedAt);
+}
+
+function clearSessionRevealTracking(sessionId: string): void {
+  sessionRevealTimestamps.delete(sessionId);
 }
 
 function winnersDir(baseDir?: string): string {
@@ -93,6 +157,26 @@ function csvEscape(value: string | number | boolean): string {
   return raw;
 }
 
+export interface CsvWriteResult {
+  action: "created" | "updated";
+  filePath: string;
+  rowCount: number;
+  questionCount: number;
+}
+
+export interface RevealPersistenceResult {
+  status: "written" | "skipped";
+  reason?: string;
+  questionIndex: number;
+  csv?: CsvWriteResult;
+}
+
+export interface SummaryWriteResult {
+  action: "created" | "updated";
+  filePath: string;
+  lineCount: number;
+}
+
 function isSubmissionCorrect(submission: Submission, correctOptions: string[]): boolean {
   return (
     submission.selectedOptions.length === correctOptions.length
@@ -104,9 +188,10 @@ function isSubmissionCorrect(submission: Submission, correctOptions: string[]): 
  * Save per-student quiz results as CSV to data/submissions/<sessionId>.csv.
  * Intended for attendance and lightweight spreadsheet workflows.
  */
-export function saveResultsCsv(session: Session, quiz: Quiz, baseDir?: string): void {
+export function saveResultsCsv(session: Session, quiz: Quiz, baseDir?: string): CsvWriteResult {
   const dir = submissionsDir(baseDir);
   ensureDir(dir);
+  const revealTimestamps = getRevealTimestampMap(session.sessionId);
 
   const correctMap = new Map<number, string[]>();
   quiz.questions.forEach((q, i) => correctMap.set(i, q.correctOptions));
@@ -125,6 +210,8 @@ export function saveResultsCsv(session: Session, quiz: Quiz, baseDir?: string): 
     "session_id",
     "session_code",
     "week",
+    "session_created_at_iso",
+    "snapshot_written_at_iso",
     "student_id",
     "display_name",
     "joined_at_iso",
@@ -136,9 +223,11 @@ export function saveResultsCsv(session: Session, quiz: Quiz, baseDir?: string): 
   ];
 
   for (let i = 0; i < quiz.questions.length; i++) {
+    headers.push(`q${i + 1}_revealed_at_iso`);
     headers.push(`q${i + 1}_selected`);
     headers.push(`q${i + 1}_correct`);
     headers.push(`q${i + 1}_response_ms`);
+    headers.push(`q${i + 1}_answered_at_iso`);
   }
 
   const rows: string[] = [headers.join(",")];
@@ -152,6 +241,8 @@ export function saveResultsCsv(session: Session, quiz: Quiz, baseDir?: string): 
       session.sessionId,
       session.sessionCode,
       session.week,
+      toIso(session.createdAt),
+      new Date().toISOString(),
       participant.studentId,
       participant.displayName || "",
       new Date(participant.joinedAt).toISOString(),
@@ -164,20 +255,188 @@ export function saveResultsCsv(session: Session, quiz: Quiz, baseDir?: string): 
 
     for (let i = 0; i < quiz.questions.length; i++) {
       const sub = subs.get(i);
+      const revealedAtIso = toIso(revealTimestamps.get(i));
       if (!sub) {
-        row.push("", "", "");
+        row.push(revealedAtIso, "", "", "", "");
         continue;
       }
+      row.push(revealedAtIso);
       row.push(sub.selectedOptions.join("|"));
       row.push(isSubmissionCorrect(sub, correctMap.get(i) || []) ? 1 : 0);
       row.push(sub.responseTimeMs);
+      row.push(toIso(sub.submittedAt));
     }
 
     rows.push(row.map(csvEscape).join(","));
   }
 
-  const filePath = path.join(dir, `${session.sessionId}.csv`);
+  const filePath = getSessionResultsCsvPath(session, baseDir);
+  const action: CsvWriteResult["action"] = fs.existsSync(filePath) ? "updated" : "created";
   fs.writeFileSync(filePath, `${rows.join("\n")}\n`, "utf-8");
+
+  return {
+    action,
+    filePath,
+    rowCount: participants.length,
+    questionCount: quiz.questions.length,
+  };
+}
+
+export function persistSessionProgressOnReveal(
+  session: Session,
+  quiz: Quiz,
+  baseDir?: string,
+  revealedAt = Date.now(),
+): RevealPersistenceResult {
+  if (session.currentQuestionIndex < 0 || session.currentQuestionIndex >= quiz.questions.length) {
+    return {
+      status: "skipped",
+      reason: `question_index_out_of_range:${session.currentQuestionIndex}`,
+      questionIndex: session.currentQuestionIndex,
+    };
+  }
+
+  markQuestionRevealed(session, session.currentQuestionIndex, revealedAt);
+  const csv = saveResultsCsv(session, quiz, baseDir);
+  return {
+    status: "written",
+    questionIndex: session.currentQuestionIndex,
+    csv,
+  };
+}
+
+export function saveSessionSummaryMarkdown(
+  session: Session,
+  quiz: Quiz,
+  baseDir?: string,
+  endedAt = Date.now(),
+): SummaryWriteResult {
+  const dir = submissionsDir(baseDir);
+  ensureDir(dir);
+
+  const participants = [...session.participants.values()].sort((a, b) => a.studentId.localeCompare(b.studentId));
+  const correctMap = new Map<number, string[]>();
+  quiz.questions.forEach((q, i) => correctMap.set(i, q.correctOptions));
+
+  const submissionsByQuestion = new Map<number, Submission[]>();
+  const submissionsByStudent = new Map<string, Submission[]>();
+  for (const sub of session.submissions) {
+    if (!submissionsByQuestion.has(sub.questionIndex)) {
+      submissionsByQuestion.set(sub.questionIndex, []);
+    }
+    submissionsByQuestion.get(sub.questionIndex)!.push(sub);
+
+    if (!submissionsByStudent.has(sub.studentId)) {
+      submissionsByStudent.set(sub.studentId, []);
+    }
+    submissionsByStudent.get(sub.studentId)!.push(sub);
+  }
+
+  const leaderboard = computeLeaderboard(session, correctMap);
+  const activeParticipants = participants.filter((p) => (submissionsByStudent.get(p.studentId)?.length || 0) > 0);
+  const avgScore = leaderboard.length > 0
+    ? leaderboard.reduce((sum, e) => sum + e.correctCount, 0) / leaderboard.length
+    : 0;
+  const durationMs = Math.max(0, endedAt - session.createdAt);
+
+  const scoreDist = new Map<number, number>();
+  for (const entry of leaderboard) {
+    scoreDist.set(entry.correctCount, (scoreDist.get(entry.correctCount) || 0) + 1);
+  }
+  const sortedScores = [...scoreDist.entries()].sort((a, b) => b[0] - a[0]);
+
+  const lines: string[] = [];
+  lines.push(`# Quiz Session Summary`);
+  lines.push("");
+  lines.push(`- Session ID: ${session.sessionId}`);
+  lines.push(`- Session Code: ${session.sessionCode}`);
+  lines.push(`- Week: ${session.week}`);
+  lines.push(`- Started At (ISO): ${toIso(session.createdAt)}`);
+  lines.push(`- Ended At (ISO): ${toIso(endedAt)}`);
+  lines.push(`- Duration: ${(durationMs / 1000).toFixed(1)}s`);
+  lines.push(`- Participant Count: ${participants.length}`);
+  lines.push(`- Active Responders: ${activeParticipants.length}`);
+  lines.push(`- Total Submissions: ${session.submissions.length}`);
+  lines.push("");
+
+  lines.push(`## Per-Question Stats`);
+  lines.push("");
+  lines.push(`| Question | Responses | Response Rate | Correct Rate | Unanswered |`);
+  lines.push(`| --- | ---: | ---: | ---: | ---: |`);
+
+  const anomalies: string[] = [];
+  for (let i = 0; i < quiz.questions.length; i++) {
+    const subs = submissionsByQuestion.get(i) || [];
+    const responseRate = participants.length > 0 ? subs.length / participants.length : 0;
+    const unanswered = Math.max(0, participants.length - subs.length);
+    const correctCount = subs.filter((sub) => isSubmissionCorrect(sub, correctMap.get(i) || [])).length;
+    const correctRate = subs.length > 0 ? correctCount / subs.length : 0;
+    lines.push(`| Q${i + 1} | ${subs.length}/${participants.length} | ${(responseRate * 100).toFixed(1)}% | ${(correctRate * 100).toFixed(1)}% | ${unanswered} |`);
+    if (responseRate < 0.8) {
+      anomalies.push(`Q${i + 1} response rate is ${(responseRate * 100).toFixed(1)}%`);
+    }
+    if (subs.length > 0 && correctRate < 0.3) {
+      anomalies.push(`Q${i + 1} correct rate is ${(correctRate * 100).toFixed(1)}%`);
+    }
+  }
+
+  lines.push("");
+  lines.push(`## Score Summary`);
+  lines.push("");
+  lines.push(`- Average Score: ${avgScore.toFixed(2)} / ${quiz.questions.length} (${quiz.questions.length > 0 ? ((avgScore / quiz.questions.length) * 100).toFixed(1) : "0.0"}%)`);
+  lines.push(`- Highest Score: ${leaderboard[0]?.correctCount ?? 0} / ${quiz.questions.length}`);
+  lines.push(`- Lowest Score: ${leaderboard[leaderboard.length - 1]?.correctCount ?? 0} / ${quiz.questions.length}`);
+  lines.push("");
+  lines.push(`### Score Distribution`);
+  if (sortedScores.length === 0) {
+    lines.push(`- No scores recorded`);
+  } else {
+    for (const [score, count] of sortedScores) {
+      lines.push(`- ${score}/${quiz.questions.length}: ${count}`);
+    }
+  }
+
+  lines.push("");
+  lines.push("## Leaderboard Summary");
+  lines.push("");
+  if (leaderboard.length === 0) {
+    lines.push("- No leaderboard entries recorded");
+  } else {
+    const winner = leaderboard[0];
+    const winnerName = winner.displayName ? ` (${winner.displayName})` : "";
+    lines.push(`- Ranked Participants: ${leaderboard.length}`);
+    lines.push(
+      `- Winner: ${winner.studentId}${winnerName}, score ${winner.correctCount}/${quiz.questions.length}, total time ${formatSecondsFromMs(winner.totalTimeMs)}`,
+    );
+    lines.push("");
+    lines.push("| Rank | Student ID | Name | Correct | Total Time (ms) |");
+    lines.push("| ---: | --- | --- | ---: | ---: |");
+    for (const entry of leaderboard.slice(0, 10)) {
+      lines.push(
+        `| ${entry.rank} | ${entry.studentId} | ${entry.displayName || "-"} | ${entry.correctCount}/${quiz.questions.length} | ${entry.totalTimeMs} |`,
+      );
+    }
+  }
+
+  lines.push("");
+  lines.push(`## Anomalies`);
+  if (anomalies.length === 0) {
+    lines.push(`- None detected`);
+  } else {
+    for (const anomaly of anomalies) {
+      lines.push(`- ${anomaly}`);
+    }
+  }
+
+  const summaryPath = getSessionSummaryMarkdownPath(session, baseDir);
+  const action: SummaryWriteResult["action"] = fs.existsSync(summaryPath) ? "updated" : "created";
+  fs.writeFileSync(summaryPath, `${lines.join("\n")}\n`, "utf-8");
+
+  return {
+    action,
+    filePath: summaryPath,
+    lineCount: lines.length,
+  };
 }
 
 // ── Weekly winners persistence ──────────────
@@ -354,6 +613,8 @@ export function persistSessionOnEnd(
   quiz: Quiz,
   baseDir?: string,
 ): void {
+  const endedAt = Date.now();
+
   try {
     saveSessionSnapshot(session, baseDir);
   } catch (e) {
@@ -367,9 +628,21 @@ export function persistSessionOnEnd(
   }
 
   try {
-    saveResultsCsv(session, quiz, baseDir);
+    const csvResult = saveResultsCsv(session, quiz, baseDir);
+    console.log(
+      `[mdq persistence] session=${session.sessionId} code=${session.sessionCode} csv_${csvResult.action} path=${csvResult.filePath} rows=${csvResult.rowCount} questions=${csvResult.questionCount}`,
+    );
   } catch (e) {
     console.error(`Failed to save results CSV for ${session.sessionId}:`, e);
+  }
+
+  try {
+    const summaryResult = saveSessionSummaryMarkdown(session, quiz, baseDir, endedAt);
+    console.log(
+      `[mdq persistence] session=${session.sessionId} code=${session.sessionCode} summary_markdown_${summaryResult.action} path=${summaryResult.filePath} lines=${summaryResult.lineCount}`,
+    );
+  } catch (e) {
+    console.error(`Failed to save session summary for ${session.sessionId}:`, e);
   }
 
   try {
@@ -377,6 +650,8 @@ export function persistSessionOnEnd(
   } catch (e) {
     console.error(`Failed to save weekly result for ${session.week}:`, e);
   }
+
+  clearSessionRevealTracking(session.sessionId);
 }
 
 // ── Utility ─────────────────────────────────

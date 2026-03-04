@@ -2,6 +2,7 @@ import request from "supertest";
 import { createApp } from "../app";
 import { clearAllSessions } from "../session";
 import { setCachedAccessInfo } from "../access-info";
+import { clearInstructorSessionsForTests } from "../instructor-auth";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
@@ -13,7 +14,65 @@ describe("REST API", () => {
 
   beforeEach(() => {
     clearAllSessions();
+    clearInstructorSessionsForTests();
     setCachedAccessInfo(null);
+  });
+
+  describe("Instructor login", () => {
+    const originalInstructorPassword = process.env.INSTRUCTOR_PASSWORD;
+
+    afterEach(() => {
+      if (typeof originalInstructorPassword === "string") {
+        process.env.INSTRUCTOR_PASSWORD = originalInstructorPassword;
+      } else {
+        delete process.env.INSTRUCTOR_PASSWORD;
+      }
+      clearInstructorSessionsForTests();
+    });
+
+    it("blocks instructor endpoints until login when password is configured", async () => {
+      process.env.INSTRUCTOR_PASSWORD = "secret-password";
+      const protectedApp = createApp(quizDir);
+
+      await request(protectedApp)
+        .post("/api/session")
+        .send({ week: "week01" })
+        .expect(401);
+
+      await request(protectedApp)
+        .post("/api/instructor/login")
+        .send({ password: "wrong" })
+        .expect(401);
+
+      const agent = request.agent(protectedApp);
+      await agent
+        .post("/api/instructor/login")
+        .send({ password: "secret-password" })
+        .expect(204);
+
+      await agent
+        .post("/api/session")
+        .send({ week: "week01" })
+        .expect(201);
+
+      const status = await agent
+        .get("/api/instructor/session")
+        .expect(200);
+      expect(status.body.authenticated).toBe(true);
+      expect(status.body.configured).toBe(true);
+    });
+
+    it("reports instructor session as authenticated when password is not configured", async () => {
+      delete process.env.INSTRUCTOR_PASSWORD;
+      const unprotectedApp = createApp(quizDir);
+
+      const status = await request(unprotectedApp)
+        .get("/api/instructor/session")
+        .expect(200);
+
+      expect(status.body.authenticated).toBe(true);
+      expect(status.body.configured).toBe(false);
+    });
   });
 
   describe("GET /api/health", () => {
@@ -187,6 +246,73 @@ describe("REST API", () => {
       res = await request(app).post(`/api/session/${sessionId}/reveal`);
       res = await request(app).post(`/api/session/${sessionId}/end`);
       expect(res.body.state).toBe("ENDED");
+    });
+
+    it("writes per-reveal CSV progress and end-of-quiz markdown summary", async () => {
+      const tempDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "mdq-lifecycle-persist-"));
+      const persistApp = createApp({ quizDir, dataDir: tempDataDir });
+      const consoleLogSpy = jest.spyOn(console, "log").mockImplementation();
+
+      try {
+        const createRes = await request(persistApp)
+          .post("/api/session")
+          .send({ week: "week01", mode: "open" })
+          .expect(201);
+
+        const sid = createRes.body.sessionId;
+        const code = createRes.body.sessionCode;
+
+        await request(persistApp).post(`/api/session/${sid}/start`).expect(200);
+        await request(persistApp).post(`/api/session/${sid}/close`).expect(200);
+        await request(persistApp).post(`/api/session/${sid}/reveal`).expect(200);
+
+        const revealLogCall = consoleLogSpy.mock.calls.find((call) => call.join(" ").includes("csv_created"));
+        expect(revealLogCall).toBeDefined();
+        expect(revealLogCall?.join(" ")).toContain(`session=${sid}`);
+
+        const submissionsPath = path.join(tempDataDir, "submissions");
+        const csvFilesAfterReveal = fs.readdirSync(submissionsPath).filter((f) => f.endsWith(".csv"));
+        expect(csvFilesAfterReveal).toHaveLength(1);
+        expect(csvFilesAfterReveal[0]).toMatch(new RegExp(`^${code}-\\d{8}-\\d{6}\\.csv$`));
+
+        await request(persistApp).post(`/api/session/${sid}/next`).expect(200);
+        await request(persistApp).post(`/api/session/${sid}/close`).expect(200);
+        await request(persistApp).post(`/api/session/${sid}/reveal`).expect(200);
+
+        const updateLogCall = consoleLogSpy.mock.calls.find((call) => call.join(" ").includes("csv_updated"));
+        expect(updateLogCall).toBeDefined();
+        expect(updateLogCall?.join(" ")).toContain(`session=${sid}`);
+
+        const csvContentAfterReveal = fs.readFileSync(path.join(submissionsPath, csvFilesAfterReveal[0]), "utf-8");
+        expect(csvContentAfterReveal).toContain("q1_revealed_at_iso");
+
+        const summaryFilesAfterReveal = fs.readdirSync(submissionsPath).filter((f) => f.endsWith("-summary.md"));
+        expect(summaryFilesAfterReveal).toHaveLength(0);
+
+        await request(persistApp).post(`/api/session/${sid}/end`).expect(200);
+
+        const endCsvLogCall = consoleLogSpy.mock.calls.find(
+          (call) => call.join(" ").includes("csv_updated") && !call.join(" ").includes("reveal_q="),
+        );
+        expect(endCsvLogCall).toBeDefined();
+        expect(endCsvLogCall?.join(" ")).toContain(`session=${sid}`);
+        expect(endCsvLogCall?.join(" ")).toContain(`code=${code}`);
+        expect(endCsvLogCall?.join(" ")).toContain("path=");
+
+        const summaryLogCall = consoleLogSpy.mock.calls.find((call) => call.join(" ").includes("summary_markdown_created"));
+        expect(summaryLogCall).toBeDefined();
+        expect(summaryLogCall?.join(" ")).toContain(`session=${sid}`);
+
+        const summaryFilesAfterEnd = fs.readdirSync(submissionsPath).filter((f) => f.endsWith("-summary.md"));
+        expect(summaryFilesAfterEnd).toHaveLength(1);
+
+        const summaryContent = fs.readFileSync(path.join(submissionsPath, summaryFilesAfterEnd[0]), "utf-8");
+        expect(summaryContent).toContain("# Quiz Session Summary");
+        expect(summaryContent).toContain(`Session ID: ${sid}`);
+      } finally {
+        consoleLogSpy.mockRestore();
+        fs.rmSync(tempDataDir, { recursive: true, force: true });
+      }
     });
 
     it("rejects invalid transitions", async () => {

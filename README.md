@@ -1,6 +1,10 @@
 # mdq
 
-MCQs are passe. Enter MDQs. Simple Markdown quizzes, zero platform bloat. Bring your own machine and a private network like Tailscale (not sponsored).
+MCQs are passe. Enter MDQs. Human- and agent-friendly Markdown Quizzes.
+
+No clunky interfaces. No proprietary nonsense.
+
+Just your own machine and a public secure tunnel (like Tailscale).
 
 ## Open Source Repo Layout
 
@@ -29,10 +33,7 @@ This creates local `data/` directories and copies sample quizzes into `data/quiz
 
 ```bash
 # required if you want instructor-only controls
-export INSTRUCTOR_KEY="choose-a-strong-local-secret"
-
-# required for instructor API calls from the browser
-export VITE_INSTRUCTOR_KEY="$INSTRUCTOR_KEY"
+export INSTRUCTOR_PASSWORD="choose-a-strong-local-secret"
 
 # optional: override instructor hash route (build-time)
 # use a long cryptic segment for class use
@@ -47,11 +48,10 @@ If `VITE_INSTRUCTOR_ROUTE_SEGMENT` is unset, the default segment is `instructor`
 
 ### 2) iPad instructor flow (private)
 
-**Security model:** mdq serves one built client bundle to everyone (students and instructor). `VITE_INSTRUCTOR_KEY` and `VITE_INSTRUCTOR_ROUTE_SEGMENT` are injected at client build time. The key protects instructor API calls (server validates the header), but the instructor UI code still exists in the bundle.
+**Security model:** mdq serves one built client bundle to everyone (students and instructor). `VITE_INSTRUCTOR_ROUTE_SEGMENT` is build-time routing only. Real instructor access is gated by a server-side login cookie created after entering `INSTRUCTOR_PASSWORD`. The password is never bundled into client code.
 
-1. Build the client with instructor key and route segment:
+1. Build the client with route segment:
    ```bash
-   export VITE_INSTRUCTOR_KEY="$INSTRUCTOR_KEY"
    export VITE_INSTRUCTOR_ROUTE_SEGMENT="instructor-9f2c7b1e4d8a6f3c"
    npm run build --workspace=@mdq/client
    ```
@@ -64,14 +64,16 @@ If `VITE_INSTRUCTOR_ROUTE_SEGMENT` is unset, the default segment is `instructor`
 
    `https://abc123.ts.net/#/instructor-9f2c7b1e4d8a6f3c`
 
-3. **Important limitation:** This longer route is only obscurity, not strong security. Do not treat it as authentication. Anyone who learns the route can open the instructor page, and a determined user could still inspect client code.
+3. Enter the instructor password on the login page. Login persists for the current browser session (refresh-safe) until the browser session ends.
+
+4. **Important limitation:** The longer route is still obscurity, not authentication by itself. Keep using a strong `INSTRUCTOR_PASSWORD` and avoid sharing your instructor route.
 
 **For classroom security:** Keep your Tailscale Funnel URL private. The security boundary is your private network (Tailscale) plus operational secrecy (don't share the instructor route with students).
 
 ### 3) student join flow (share this one)
 
 - Share only the student join URL or QR code from the instructor screen.
-- Student QR codes resolve to `/#/join/<SESSION_CODE>` and do not need the instructor key.
+- Student QR codes resolve to `/#/join/<SESSION_CODE>` and do not need instructor login.
 - Student join flow does not depend on `VITE_INSTRUCTOR_ROUTE_SEGMENT`.
 
 Port fallback retries default to 10 attempts (`PORT_FALLBACKS=10`).
@@ -86,11 +88,20 @@ Then share the generated `https://<machine>.ts.net` URL (or short URL / QR shown
 
 If students see `Session not found for that code`, verify your Tailscale Funnel is bound to the same port your active mdq server process is using.
 
+Why Tailscale works (plain language):
+
+- Tailscale creates a secure, encrypted path between your class devices and your mdq server.
+- For normal Tailscale access, each device must be signed in and approved first.
+- With Funnel, anyone who has the URL can reach that one published quiz page.
+- When you run `tailscale funnel 3000`, you are publishing only the mdq web app on that one port.
+- This is not the same as opening your whole computer. It does not expose your files, terminal, or other apps unless you explicitly publish those too.
+- If the link is shared outside class, outsiders could still reach the quiz page, so keep session links short-lived and private.
+
 Student QR behavior:
 
 - QR codes resolve directly to `/#/join/<SESSION_CODE>`
 - students land on the join page with the code pre-filled
-- instructor controls require a matching `INSTRUCTOR_KEY` when configured
+- instructor controls require a valid login session when `INSTRUCTOR_PASSWORD` is configured
 
 ## Why This Works
 
@@ -153,6 +164,26 @@ What is intentionally out of scope for this deployment model:
 - hard identity verification and anti-cheat guarantees
 - internet-scale adversarial abuse resistance
 - long-term PII storage and compliance-heavy workflows
+
+## Security Considerations for MDQ
+
+### Input Safety
+
+MDQ quizzes use button-based selections only, no free-text input. This minimizes risk because users can only interact in predefined ways. Injection or unexpected data is essentially impossible.
+
+### Docker, Pros and Cons
+
+Pros:
+
+- Isolation: the app runs in a clean, consistent environment.
+- Reproducibility: every run is identical, reducing surprises.
+
+Cons:
+
+- Slight complexity: you need to manage a Dockerfile and container setup.
+- Overhead: minimal extra resource use, but not essential for a simple class deployment.
+
+In summary, Docker offers structure, but may be overkill if you are running a simple Node.js quiz with controlled input. As long as you keep your app scoped, you are in good shape.
 
 ## Safe Contribution Workflow
 

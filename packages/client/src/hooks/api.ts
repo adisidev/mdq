@@ -2,11 +2,6 @@ import { API } from "@mdq/shared";
 import type { AccessInfo } from "@mdq/shared";
 
 const BASE = "";
-const INSTRUCTOR_KEY = (import.meta as { env?: { VITE_INSTRUCTOR_KEY?: string } }).env?.VITE_INSTRUCTOR_KEY || "";
-
-function instructorHeaders(): Record<string, string> {
-  return INSTRUCTOR_KEY ? { "x-instructor-key": INSTRUCTOR_KEY } : {};
-}
 
 function apiPath(template: string, params: Record<string, string> = {}): string {
   let path = template;
@@ -28,6 +23,30 @@ export interface CreateSessionResponse {
   joinUrl: string;
 }
 
+export interface InstructorSessionStatus {
+  authenticated: boolean;
+  configured: boolean;
+}
+
+export async function fetchInstructorSessionStatus(): Promise<InstructorSessionStatus> {
+  const res = await fetch(apiPath(API.INSTRUCTOR_SESSION), { credentials: "same-origin" });
+  if (!res.ok) throw new Error("Failed to verify instructor session");
+  return res.json();
+}
+
+export async function loginInstructor(password: string): Promise<void> {
+  const res = await fetch(apiPath(API.INSTRUCTOR_LOGIN), {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to log in as instructor");
+  }
+}
+
 export async function fetchQuizzes(): Promise<QuizSummary[]> {
   const res = await fetch(apiPath(API.QUIZZES));
   if (!res.ok) throw new Error("Failed to fetch quizzes");
@@ -42,7 +61,7 @@ export interface ReloadQuizzesResponse {
 export async function reloadQuizzes(): Promise<ReloadQuizzesResponse> {
   const res = await fetch(apiPath(API.QUIZZES_RELOAD), {
     method: "POST",
-    headers: instructorHeaders(),
+    credentials: "same-origin",
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -54,7 +73,8 @@ export async function reloadQuizzes(): Promise<ReloadQuizzesResponse> {
 export async function createSession(week: string, mode: string = "open"): Promise<CreateSessionResponse> {
   const res = await fetch(apiPath(API.SESSION_CREATE), {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...instructorHeaders() },
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ week, mode }),
   });
   if (!res.ok) {
@@ -69,7 +89,7 @@ async function sessionAction(sessionId: string, action: string): Promise<Record<
   if (!pathTemplate) throw new Error(`Unknown action: ${action}`);
   const res = await fetch(apiPath(pathTemplate, { id: sessionId }), {
     method: "POST",
-    headers: instructorHeaders(),
+    credentials: "same-origin",
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -101,7 +121,7 @@ export async function endSession(sessionId: string) {
 export async function showLeaderboard(sessionId: string): Promise<Record<string, unknown>> {
   const res = await fetch(apiPath(API.SESSION_LEADERBOARD_SHOW, { id: sessionId }), {
     method: "POST",
-    headers: instructorHeaders(),
+    credentials: "same-origin",
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -113,7 +133,7 @@ export async function showLeaderboard(sessionId: string): Promise<Record<string,
 export async function hideLeaderboard(sessionId: string): Promise<Record<string, unknown>> {
   const res = await fetch(apiPath(API.SESSION_LEADERBOARD_HIDE, { id: sessionId }), {
     method: "POST",
-    headers: instructorHeaders(),
+    credentials: "same-origin",
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -136,7 +156,7 @@ export async function fetchAccessInfo(): Promise<AccessInfo> {
 
 export async function fetchSessionAccessInfo(sessionId: string): Promise<AccessInfo> {
   const res = await fetch(apiPath(API.SESSION_ACCESS_INFO, { id: sessionId }), {
-    headers: instructorHeaders(),
+    credentials: "same-origin",
   });
   if (!res.ok) throw new Error("Failed to fetch session access info");
   return res.json();
