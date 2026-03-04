@@ -342,6 +342,7 @@ function LiveView({
   const displayReveal = isReviewing && reviewQuestionIndex !== null
     ? revealCache[reviewQuestionIndex] ?? null
     : rev;
+  const showDetailedRevealChoices = state === "REVEAL" && !!displayReveal && !!displayQuestion;
 
   // Determine which controls to show
   const canClose = state === "QUESTION_OPEN";
@@ -351,9 +352,10 @@ function LiveView({
     q &&
     q.questionIndex < totalQuestionsInQuiz - 1;
   const canShowLeaderboard = state === "REVEAL";
+  const isFinalQuestion = liveQuestionIndex >= totalQuestionsInQuiz - 1;
 
   return (
-    <div className="min-h-dvh flex flex-col p-6 lg:p-10">
+    <div className={`min-h-dvh flex flex-col p-6 lg:p-10 ${accessInfo && sessionCode ? "lg:pr-56" : ""}`}>
       {/* Top bar: question progress + timer + participant count */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -449,18 +451,39 @@ function LiveView({
         {displayReveal && (((state === "REVEAL" && displayQuestion && !isReviewing) || (isReviewing && displayQuestion))) && (
           <>
             <div
-              className="quiz-html text-xl lg:text-2xl text-zinc-300 text-center leading-relaxed max-w-3xl"
+              className={`quiz-html text-center leading-relaxed max-w-3xl ${isReviewing ? "text-2xl lg:text-3xl text-white" : "text-xl lg:text-2xl text-zinc-300"}`}
               dangerouslySetInnerHTML={{ __html: displayQuestion.text }}
             />
 
-            <div className="w-full max-w-2xl">
-              <DistributionChart
-                distribution={displayReveal.distribution}
-                correctOptions={displayReveal.correctOptions}
-                labels={displayQuestion.options.map((o) => o.label)}
-                showCorrect
-              />
-            </div>
+            {showDetailedRevealChoices && (
+              <div className="w-full max-w-2xl space-y-2">
+                {displayQuestion.options.map((opt) => {
+                  const isCorrect = displayReveal.correctOptions.includes(opt.label);
+                  return (
+                    <div
+                      key={opt.label}
+                      className={`rounded-xl border px-4 py-3 flex items-start gap-3 ${
+                        isCorrect
+                          ? "border-emerald-500/60 bg-emerald-600/15"
+                          : "border-zinc-800 bg-zinc-900/60"
+                      }`}
+                    >
+                      <span
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-mono font-bold text-sm ${
+                          isCorrect ? "bg-emerald-600 text-white" : "bg-zinc-700 text-zinc-300"
+                        }`}
+                      >
+                        {opt.label}
+                      </span>
+                      <span
+                        className={`quiz-html pt-0.5 ${isCorrect ? "text-emerald-100" : "text-zinc-200"}`}
+                        dangerouslySetInnerHTML={{ __html: opt.text }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {displayReveal.explanation && (
               <div className="bg-emerald-900/30 border border-emerald-700/50 rounded-xl p-6 max-w-2xl w-full">
@@ -572,7 +595,13 @@ function LiveView({
           )}
           {!isReviewing && state === "LEADERBOARD" && (
             <button
-              onClick={() => onAction(() => hideLeaderboard(sessionId), "resume")}
+              onClick={() => {
+                if (isFinalQuestion) {
+                  setReviewQuestionIndex(liveQuestionIndex);
+                  return;
+                }
+                onAction(() => hideLeaderboard(sessionId), "resume");
+              }}
               disabled={loading}
               className="bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-700 text-white font-semibold py-3 px-8 rounded-xl transition-colors"
             >
@@ -592,7 +621,7 @@ function LiveView({
       </div>
 
       {accessInfo && sessionCode && (
-        <div className="fixed top-4 right-4 z-20 bg-white text-zinc-900 rounded-xl shadow-xl border border-zinc-200 p-3 w-44">
+        <div className="fixed top-4 right-4 z-20 bg-white text-zinc-900 rounded-xl shadow-xl border border-zinc-200 p-3 w-40">
           {accessInfo.qrCodeDataUrl && (
             <img
               src={accessInfo.qrCodeDataUrl}
