@@ -30,7 +30,7 @@ export function parseQuizMarkdown(markdown: string, sourceFile: string): ParseRe
   const titleMatch = markdown.match(/^#\s+(.+)$/m);
   const title = titleMatch ? titleMatch[1].trim() : "";
 
-  // Extract week from filename (e.g., "week01-quiz.md" -> "week01")
+  // Extract week from filename (e.g., "week01.md" -> "week01")
   const weekMatch = sourceFile.match(/(week\d+)/i);
   const week = weekMatch ? weekMatch[1].toLowerCase() : sourceFile.replace(/\.md$/, "");
 

@@ -230,7 +230,7 @@ describe("E2E Lifecycle: Full Quiz Session", () => {
 
     // ── Step 4: Students submit answers ──
     // Alice answers correctly (B), Bob answers wrong (A), Charlie answers correctly (B)
-    const correctOption = "B"; // From week01-quiz.md: correct answer for Q1 is B
+    const correctOption = "B"; // From week01.md: correct answer for Q1 is B
     const submitPromises = [
       { socket: students[0].socket, answer: [correctOption] },  // Alice: correct
       { socket: students[1].socket, answer: ["A"] },             // Bob: wrong

@@ -24,7 +24,7 @@ D. 6
 
 ---
 `;
-      const result = parseQuizMarkdown(md, "week01-quiz.md");
+      const result = parseQuizMarkdown(md, "week01.md");
       expect(result.errors).toHaveLength(0);
       expect(result.quiz).not.toBeNull();
       const q = result.quiz!;
@@ -60,7 +60,7 @@ B. No
 
 ---
 `;
-      const result = parseQuizMarkdown(md, "week03-quiz.md");
+      const result = parseQuizMarkdown(md, "week03.md");
       expect(result.errors).toHaveLength(0);
       expect(result.quiz!.questions[0].timeLimitSec).toBe(45);
     });
@@ -82,7 +82,7 @@ B. No
 
 ---
 `;
-      const result = parseQuizMarkdown(md, "week01-quiz.md");
+      const result = parseQuizMarkdown(md, "week01.md");
       expect(result.quiz!.questions[0].timeLimitSec).toBe(20);
     });
 
@@ -105,7 +105,7 @@ D. Fourth
 
 ---
 `;
-      const result = parseQuizMarkdown(md, "week01-quiz.md");
+      const result = parseQuizMarkdown(md, "week01.md");
       expect(result.errors).toHaveLength(0);
       const q = result.quiz!.questions[0];
       expect(q.correctOptions).toEqual(["A", "C"]);
@@ -134,7 +134,7 @@ B. undefined
 
 ---
 `;
-      const result = parseQuizMarkdown(md, "week01-quiz.md");
+      const result = parseQuizMarkdown(md, "week01.md");
       expect(result.errors).toHaveLength(0);
       const q = result.quiz!.questions[0];
       expect(q.textHtml).toContain("code");
@@ -173,7 +173,7 @@ B. Beta
 
 ---
 `;
-      const result = parseQuizMarkdown(md, "week01-quiz.md");
+      const result = parseQuizMarkdown(md, "week01.md");
       expect(result.errors).toHaveLength(0);
       expect(result.quiz!.questions).toHaveLength(2);
       expect(result.quiz!.questions[0].timeLimitSec).toBe(20);
@@ -204,7 +204,7 @@ B. No
 - Objective 1
 - Objective 2
 `;
-      const result = parseQuizMarkdown(md, "week01-quiz.md");
+      const result = parseQuizMarkdown(md, "week01.md");
       expect(result.quiz!.questions).toHaveLength(1);
     });
   });
@@ -365,9 +365,9 @@ B. No
   describe("sample quiz files", () => {
     const quizDir = path.join(__dirname, "fixtures/quizzes");
 
-    it("parses week01-quiz.md", () => {
-      const md = fs.readFileSync(path.join(quizDir, "week01-quiz.md"), "utf-8");
-      const result = parseQuizMarkdown(md, "week01-quiz.md");
+    it("parses week01.md", () => {
+      const md = fs.readFileSync(path.join(quizDir, "week01.md"), "utf-8");
+      const result = parseQuizMarkdown(md, "week01.md");
       expect(result.errors).toHaveLength(0);
       expect(result.quiz!.questions).toHaveLength(3);
       expect(result.quiz!.questions[0].timeLimitSec).toBe(30);
@@ -376,9 +376,9 @@ B. No
       expect(result.quiz!.questions[2].correctOptions).toEqual(["A", "B", "D"]);
     });
 
-    it("parses week02-quiz.md", () => {
-      const md = fs.readFileSync(path.join(quizDir, "week02-quiz.md"), "utf-8");
-      const result = parseQuizMarkdown(md, "week02-quiz.md");
+    it("parses week02.md", () => {
+      const md = fs.readFileSync(path.join(quizDir, "week02.md"), "utf-8");
+      const result = parseQuizMarkdown(md, "week02.md");
       expect(result.errors).toHaveLength(0);
       expect(result.quiz!.questions).toHaveLength(2);
       expect(result.quiz!.questions[1].timeLimitSec).toBe(25);
