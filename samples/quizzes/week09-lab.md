@@ -9,11 +9,12 @@ Run sequence: First Hand -> Open Brush -> Elixir -> Mission: ISS. There are 4 de
 In First Hand, you can see realistic virtual hands that move in sync with your real hand movements. You can directly touch buttons, grab objects, and even pull distant objects toward you with a "distance grab" gesture. Which factor most contributes to the sense of embodiment in this experience?
 
 A. High-resolution display panels
-B. Visuomotor synchrony: the virtual hands move in precise sync with your physical hands from a first-person perspective
+B. Visuomotor synchrony
 C. Spatial audio from the environment
 D. The use of teleportation for locomotion
 
-> Correct Answer: B. Visuomotor synchrony: the virtual hands move in precise sync with your physical hands from a first-person perspective
+> Correct Answer: B. Visuomotor synchrony
+> Overall Feedback: Embodiment is strongest when your seen body and felt movement stay tightly aligned. In First Hand, first-person visuomotor synchrony makes the virtual hands feel like your own more than display fidelity, audio, or locomotion style.
 
 ---
 
@@ -21,11 +22,12 @@ D. The use of teleportation for locomotion
 
 In First Hand, you can pull distant objects toward you using a "distance grab" gesture (pointing and then flicking your wrist). Where does this "distance grab" fall on the Interaction Authenticity spectrum?
 
-A. Natural Interaction: it maps 1:1 to how you grab objects in real life
-B. Augmented Natural Interaction: it starts with a real physical gesture (pointing and flicking) but produces an enhanced virtual effect (pulling objects from far away)
-C. Artificial (Magical) Interaction: there is no physical gesture involved at all
+A. Natural Interaction
+B. Augmented Natural Interaction
+C. Artificial (Magical) Interaction
 
-> Correct Answer: B. Augmented Natural Interaction: it starts with a real physical gesture (pointing and flicking) but produces an enhanced virtual effect (pulling objects from far away)
+> Correct Answer: B. Augmented Natural Interaction
+> Overall Feedback: Distance grab starts from a real pointing and flicking action, but the resulting effect, pulling far objects to you, is enhanced beyond normal physical capability. That makes it Augmented Natural Interaction rather than purely Natural or fully Magical.
 
 ---
 
@@ -33,11 +35,12 @@ C. Artificial (Magical) Interaction: there is no physical gesture involved at al
 
 In Open Brush, you draw 3D strokes by moving a controller through space and pressing the trigger. Where does this interaction fall on the spectrum?
 
-A. Natural Interaction: it directly maps your physical arm movement to a virtual brush stroke
-B. Augmented Natural Interaction: the physical drawing motion is real, but virtual brush effects (particles, fire, stars) go beyond what a real brush can do
-C. Artificial (Magical) Interaction: there is no real-world analogue for painting in mid-air
+A. Natural Interaction
+B. Augmented Natural Interaction
+C. Artificial (Magical) Interaction
 
-> Correct Answer: B. Augmented Natural Interaction: the physical drawing motion is real, but virtual brush effects (particles, fire, stars) go beyond what a real brush can do
+> Correct Answer: B. Augmented Natural Interaction
+> Overall Feedback: Open Brush keeps the natural arm-drawing motion, but it augments the outcome with impossible effects such as particles, fire, and stars. This combination fits Augmented Natural Interaction.
 
 ---
 
@@ -51,19 +54,21 @@ C. Hand tracking (bare-hand gestures, pinch, grab)
 D. Raycasting (virtual laser pointer)
 
 > Correct Answer: C. Hand tracking (bare-hand gestures, pinch, grab)
+> Overall Feedback: Elixir interaction here depends on direct bare-hand tracking and gesture recognition, not gaze, controller buttons, or ray pointers. Pinch and poke gestures indicate hand tracking as the primary modality.
 
 ---
 
 ## Elixir Activity: Implicit vs Explicit Agency
 
-In Elixir, some objects respond simply because your hand is near them (proximity triggers), while other objects require you to deliberately pinch or poke them. Using the week09 framework, how would you classify these two types of interaction?
+In Elixir, some objects respond simply because your hand is near them (proximity triggers), while other objects require you to deliberately pinch or poke them. Using interaction agency terminology, how would you classify these two types of interaction?
 
 A. Proximity responses are Implicit (passive); pinch/poke actions are Explicit (active)
-B. Both are Implicit (passive) since they all use hand tracking
-C. Both are Explicit (active) since the user must move their hands
+B. Both are Implicit (passive)
+C. Both are Explicit (active)
 D. Proximity responses are Artificial (Magical) Interaction; pinch/poke actions are Natural Interaction
 
 > Correct Answer: A. Proximity responses are Implicit (passive); pinch/poke actions are Explicit (active)
+> Overall Feedback: Proximity-triggered responses are implicit because the system reacts without a deliberate command. Pinch and poke actions are explicit because the user intentionally performs a triggering gesture.
 
 ---
 
@@ -71,12 +76,13 @@ D. Proximity responses are Artificial (Magical) Interaction; pinch/poke actions 
 
 In Mission: ISS, you move through the space station in zero gravity by grabbing handrails and pushing off surfaces with your controllers. How does this locomotion approach compare to the five key locomotion methods covered in the slides?
 
-A. It is teleportation since you jump from point to point
-B. It is joystick-based continuous locomotion since you use the controller thumbstick
-C. It is a form of Natural Interaction: your physical grab-and-push maps to the way astronauts actually move in zero gravity
-D. It is walking-in-place (WIP) since your body moves
+A. It is teleportation
+B. It is joystick-based continuous locomotion
+C. It is a form of Natural Interaction
+D. It is walking-in-place (WIP)
 
-> Correct Answer: C. It is a form of Natural Interaction: your physical grab-and-push maps to the way astronauts actually move in zero gravity
+> Correct Answer: C. It is a form of Natural Interaction
+> Overall Feedback: Mission: ISS locomotion mirrors real astronaut movement by grabbing rails and pushing off surfaces. It is not teleportation, thumbstick locomotion, or WIP, so it best matches Natural Interaction.
 
 ---
 
@@ -84,11 +90,12 @@ D. It is walking-in-place (WIP) since your body moves
 
 Comparing Open Brush (controller-based drawing) and First Hand (hand tracking grab/touch), which experience gives a higher degree of embodiment and why?
 
-A. Open Brush: holding a physical controller that maps to a virtual tool provides stronger embodiment
-B. First Hand: seeing and using your tracked bare hands with visuomotor synchrony provides stronger embodiment than an abstract controller
-C. Both provide equal embodiment since both track your hand movements
-D. Neither provides embodiment since you are not seeing a full virtual body
+A. Open Brush
+B. First Hand
+C. Both provide equal embodiment
+D. Neither provides embodiment
 
-> Correct Answer: B. First Hand: seeing and using your tracked bare hands with visuomotor synchrony provides stronger embodiment than an abstract controller
+> Correct Answer: B. First Hand
+> Overall Feedback: First Hand typically gives stronger embodiment because users see and act through tracked bare hands with close visuomotor synchrony. Open Brush can still feel embodied, but an abstract controller usually weakens body ownership compared with direct hand representation.
 
 ---
