@@ -30,14 +30,14 @@ D. Image-based scenes cannot include any audio
 
 ## Interaction Concepts: Natural vs Artificial
 
-Consider these two VR locomotion methods: (A) the user physically walks in a tracked space to move, and (B) the user pushes a thumbstick on a controller to glide forward. How would you classify them on the natural-to-artificial spectrum?
+In a VR fantasy workshop, learners turn a virtual crank by rotating their wrist as if using a real tool. They can also summon a shield by making a quick two-finger flick in mid-air. Which classification best matches these two interactions?
 
-A. A is natural, B is artificial
-B. A is artificial, B is natural
-C. Both are natural since they both move the user
-D. Both are artificial since neither is "real" movement
+A. Crank turning is natural, shield summon is magical
+B. Crank turning is augmented natural, shield summon is natural
+C. Crank turning is magical, shield summon is augmented natural
+D. Both are augmented natural because both use hand movement
 
-> Correct Answer: A. A is natural, B is artificial
+> Correct Answer: A. Crank turning is natural, shield summon is magical
 
 ---
 
