@@ -20,7 +20,7 @@ mdq solves these problems by using markdown files as the canonical quiz source, 
 
 ### Goals
 
-- **G1**: Auto-parse quiz questions from markdown files (week01-quiz.md, week02-quiz.md, etc.) without manual data entry.
+- **G1**: Auto-parse quiz questions from markdown files (week01.md, week02.md, etc.) without manual data entry.
 - **G2**: Host live in-class quizzes where students join via QR code or short URL and answer questions in real time.
 - **G3**: Display a projector view for the instructor showing the current question, a live answer distribution chart, and a timer.
 - **G4**: Show a results view after each question (or after the full quiz) with correct answers and explanations.
@@ -65,7 +65,7 @@ mdq solves these problems by using markdown files as the canonical quiz source, 
 
 | Feature | Description |
 |---------|-------------|
-| Markdown parser | Parse week01-quiz.md through weekNN-quiz.md files into structured quiz data. Support the d2l-quiz markdown format (see Section 8). |
+| Markdown parser | Parse week01.md through weekNN.md files into structured quiz data. Support the d2l-quiz markdown format (see Section 8). |
 | Session management | Instructor can create a live quiz session from a selected week's quiz file. Generate a unique session code. |
 | Student join flow | Students scan QR code or enter short URL, provide a student ID (and optionally a display name), and join the session. No login required. |
 | Question display | Render questions with markdown support (bold, inline code, code blocks with syntax highlighting, images). |
@@ -131,7 +131,7 @@ The system supports two modes for student identity validation at join time, conf
 
 **Architecture**: The system has two components:
 
-1. **Static frontend** (hosted on GitHub Pages): React + Tailwind CSS single-page application. This includes the student view, instructor view, and all UI components. The markdown quiz files (week01-quiz.md, etc.) are also committed to the same repo and served as static assets.
+1. **Static frontend** (hosted on GitHub Pages): React + Tailwind CSS single-page application. This includes the student view, instructor view, and all UI components. The markdown quiz files (week01.md, etc.) are also committed to the same repo and served as static assets.
 
 2. **Lightweight backend** (runs locally on instructor's machine, exposed via Tailscale Funnel): A Node.js server that handles session state, WebSocket connections for real-time updates, and quiz data serving. Tailscale Funnel provides a public HTTPS endpoint so students can reach the backend from any network without installing anything (see Section 9).
 
@@ -199,9 +199,9 @@ At 200-250 concurrent students, the following simplifications apply:
 ```
 [Markdown Files]          [Backend Server]           [Clients]
                                                           
-week01-quiz.md  ------>  Parse on startup or     <----->  Instructor browser
-week02-quiz.md           on file change                   (projector view)
-week03-quiz.md                                            
+week01.md  ------>  Parse on startup or     <----->  Instructor browser
+week02.md           on file change                   (projector view)
+week03.md                                            
     ...                  In-memory quiz store     <----->  Student browsers
                                                           (phone view)
                          session state (in-memory)
@@ -210,7 +210,7 @@ week03-quiz.md
 
 ### Detailed Flow
 
-1. **Startup**: The backend reads all `weekNN-quiz.md` files from the configured quiz directory (or fetches them from the GitHub Pages URL). It parses each file into a structured array of questions. The server then detects its public Funnel URL by calling `tailscale status --json` and parsing `Self.DNSName`. If Tailscale is available and Funnel is active, the server constructs the public URL (`https://<DNSName>`), calls the TinyURL API to generate a short URL, and generates a QR code via the `qrcode` npm package. If Tailscale is unavailable, the server falls back to the local LAN IP and logs a warning.
+1. **Startup**: The backend reads all `weekNN.md` files from the configured quiz directory (or fetches them from the GitHub Pages URL). It parses each file into a structured array of questions. The server then detects its public Funnel URL by calling `tailscale status --json` and parsing `Self.DNSName`. If Tailscale is available and Funnel is active, the server constructs the public URL (`https://<DNSName>`), calls the TinyURL API to generate a short URL, and generates a QR code via the `qrcode` npm package. If Tailscale is unavailable, the server falls back to the local LAN IP and logs a warning.
 
 2. **Session creation**: The instructor selects a week's quiz from the dashboard. The backend creates a session with a unique 6-character code, stores it in memory, and returns the session URL. The instructor's "Session Start" screen prominently displays the Funnel URL, the short URL, and a large QR code so students can scan or type the URL to join.
 
@@ -233,10 +233,10 @@ Quiz files follow the format established in the [d2l-quiz](https://github.com/ch
 ### File Naming Convention
 
 ```
-week01-quiz.md
-week02-quiz.md
+week01.md
+week02.md
 ...
-week13-quiz.md
+week13.md
 ```
 
 ### Format Specification
@@ -496,7 +496,7 @@ interface Quiz {
   week: string;              // e.g., "week01"
   title: string;             // e.g., "Week 01 Quiz: Introduction to XR"
   questions: Question[];
-  sourceFile: string;        // e.g., "week01-quiz.md"
+  sourceFile: string;        // e.g., "week01.md"
 }
 
 interface Question {
@@ -573,8 +573,8 @@ In-memory data (sessions, connected participants, live submissions) is authorita
 ```
 data/
   quizzes/
-    week01-quiz.md           # source markdown files (read-only by server)
-    week02-quiz.md
+    week01.md           # source markdown files (read-only by server)
+    week02.md
     ...
   sessions/
     <sessionId>.json         # session metadata + final state snapshot (written on session end)
@@ -610,7 +610,7 @@ Each criterion below is testable. P1 is complete when all criteria pass.
 
 ### Markdown Parsing
 
-- AC-1: The parser successfully extracts title, topic, question text, options, correct answer(s), explanation, and time limit from every question block in the example `week01-quiz.md` through `week13-quiz.md` files.
+- AC-1: The parser successfully extracts title, topic, question text, options, correct answer(s), explanation, and time limit from every question block in the example `week01.md` through `week13.md` files.
 - AC-2: The parser produces a validation error (not a crash) for malformed questions: missing correct answer line, no options, unterminated code block. The error message identifies the question number and file.
 - AC-3: Code blocks in question text and options render with syntax highlighting (highlight.js classes present in HTML output).
 
@@ -658,7 +658,7 @@ P1 is broken into seven milestones. Each milestone has concrete deliverables and
 ### M1: Parser and Schema Validation
 
 **Deliverables:**
-- Markdown parser module that reads `weekNN-quiz.md` files and produces `Quiz` objects matching the Section 12 interface.
+- Markdown parser module that reads `weekNN.md` files and produces `Quiz` objects matching the Section 12 interface.
 - Validation layer that rejects malformed questions with descriptive errors (question index, file name, what is missing).
 - Unit tests covering: single-select, multi-select, code blocks, missing fields, `time_limit` parsing, default `time_limit` of 20s.
 

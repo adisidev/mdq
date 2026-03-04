@@ -45,7 +45,7 @@ function makeQuiz(week = "week01", questionCount = 2): Quiz {
     explanation: `A is correct for Q${i + 1}`,
     timeLimitSec: 20,
   }));
-  return { week, title: `Week Quiz`, questions, sourceFile: `${week}-quiz.md` };
+  return { week, title: `Week Quiz`, questions, sourceFile: `${week}.md` };
 }
 
 /** Setup a session with participants and submissions for testing */

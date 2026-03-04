@@ -9,7 +9,7 @@ Pre-class verification steps for running mdq live. Covers both Tailscale-availab
 - [ ] Node.js installed (`node -v`, need v18+)
 - [ ] Dependencies installed (`cd ~/repos/mdq && npm install`)
 - [ ] Local data dirs bootstrapped (`npm run setup:local`)
-- [ ] Quiz file ready (`data/quizzes/weekNN-quiz.md` exists, validated)
+- [ ] Quiz file ready (`data/quizzes/weekNN.md` exists, validated)
 - [ ] If quiz markdown was edited while server is already running, use "Reload Quiz Files" in instructor setup (no rebuild needed)
 - [ ] Build is current (`npm run build`)
 
