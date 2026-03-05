@@ -17,6 +17,30 @@ Just your own machine and a public secure tunnel (like Tailscale).
 
 The `data/` folder is intentionally ignored so local state and access info do not get committed.
 
+## Static Demo Gallery
+
+For open-source preview, the repo includes 7 curated UI screenshots under `docs/demo/`.
+
+Selection rule (deterministic): newest 7 files in `~/Library/Mobile Documents/com~apple~CloudDocs/Downloads` matching `Screenshot 2026-03-05 at 6.*PM.png` (excluding the 8th oldest candidate).
+
+- `Screenshot 2026-03-05 at 6.06.57 PM.png` -> `docs/demo/mdq-demo-01.png`
+- `Screenshot 2026-03-05 at 6.06.39 PM.png` -> `docs/demo/mdq-demo-02.png`
+- `Screenshot 2026-03-05 at 6.05.51 PM.png` -> `docs/demo/mdq-demo-03.png`
+- `Screenshot 2026-03-05 at 6.05.32 PM.png` -> `docs/demo/mdq-demo-04.png`
+- `Screenshot 2026-03-05 at 6.05.10 PM.png` -> `docs/demo/mdq-demo-05.png`
+- `Screenshot 2026-03-05 at 6.04.51 PM.png` -> `docs/demo/mdq-demo-06.png`
+- `Screenshot 2026-03-05 at 6.01.57 PM.png` -> `docs/demo/mdq-demo-07.png`
+
+Images are resized to max dimension 1400px for a lighter repo footprint.
+
+![MDQ demo 1](docs/demo/mdq-demo-01.png)
+![MDQ demo 2](docs/demo/mdq-demo-02.png)
+![MDQ demo 3](docs/demo/mdq-demo-03.png)
+![MDQ demo 4](docs/demo/mdq-demo-04.png)
+![MDQ demo 5](docs/demo/mdq-demo-05.png)
+![MDQ demo 6](docs/demo/mdq-demo-06.png)
+![MDQ demo 7](docs/demo/mdq-demo-07.png)
+
 ## First-Time Setup
 
 ```bash
