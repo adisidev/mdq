@@ -2,7 +2,7 @@
 
 MCQs are passe. Enter MDQs. Human- and agent-friendly Markdown Quizzes.
 
-No clunky interfaces. No proprietary nonsense.
+No clunky interfaces. No proprietary nonsense. No database.
 
 Just your own machine and a public secure tunnel (like Tailscale).
 
@@ -67,6 +67,8 @@ If `VITE_INSTRUCTOR_ROUTE_SEGMENT` is unset, the default segment is `instructor`
 3. Enter the instructor password on the login page. Login persists for the current browser session (refresh-safe) until the browser session ends.
 
 4. **Important limitation:** The longer route is still obscurity, not authentication by itself. Keep using a strong `INSTRUCTOR_PASSWORD` and avoid sharing your instructor route.
+
+Tip for classroom privacy and mobility: present from iPad, add MDQ to your iPad Home Screen, and launch it as a web app. This keeps browser chrome out of view, hides the full URL during projection, and lets you walk around while controlling the session.
 
 **For classroom security:** Keep your Tailscale Funnel URL private. The security boundary is your private network (Tailscale) plus operational secrecy (don't share the instructor route with students).
 
