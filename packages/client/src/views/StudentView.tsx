@@ -6,27 +6,54 @@ import type { SessionState } from "@mdq/shared";
 import Timer from "../components/Timer";
 import Leaderboard from "../components/Leaderboard";
 
-export default function StudentView({ sessionCode }: { sessionCode?: string }) {
+function formatQuizLabel(quizKey: string): string {
+  const normalized = quizKey.trim();
+  if (!normalized) return "MDQ";
+  if (/\bmdq\b/i.test(normalized)) return normalized;
+  return `${normalized} MDQ`;
+}
+
+function clearSessionArtifacts(): void {
+  try {
+    localStorage.removeItem("mdquiz_session");
+    localStorage.removeItem("mdquiz_pending_join");
+  } catch {
+    // ignore
+  }
+}
+
+export default function StudentView({
+  initialSessionCode,
+  initialSessionId,
+}: {
+  initialSessionCode?: string;
+  initialSessionId?: string;
+}) {
   const normalizeSessionCode = useCallback(
     (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6),
     [],
   );
 
   // Join form state
-  const [code, setCode] = useState(normalizeSessionCode(sessionCode || ""));
+  const [code, setCode] = useState(normalizeSessionCode(initialSessionCode || ""));
   const [studentId, setStudentId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [quizKey, setQuizKey] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [completed, setCompleted] = useState(false);
 
-  // Sync sessionCode prop to code state (prop may change without remount)
+  // Sync route-provided code to input deterministically.
   useEffect(() => {
-    if (sessionCode) {
-      setCode(normalizeSessionCode(sessionCode));
+    if (initialSessionCode) {
+      setCode(normalizeSessionCode(initialSessionCode));
+      return;
     }
-  }, [sessionCode, normalizeSessionCode]);
+    if (initialSessionId) {
+      setCode("");
+    }
+  }, [initialSessionCode, initialSessionId, normalizeSessionCode]);
 
   // Clear error when user edits any input field
   const handleCodeChange = useCallback((val: string) => {
@@ -51,29 +78,36 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem("mdquiz_session");
+      const targetSessionId = (initialSessionId || "").trim();
       if (raw) {
         const stored = JSON.parse(raw);
-        if (!sessionCode && stored.sessionId) {
+        if (targetSessionId && stored.sessionId === targetSessionId) {
+          setSessionId(stored.sessionId);
+          setStudentId(stored.studentId || "");
+        } else if (targetSessionId && stored.sessionId !== targetSessionId) {
+          setSessionId(targetSessionId);
+          setStudentId(stored.studentId || "");
+        } else if (!initialSessionCode && stored.sessionId) {
           setSessionId(stored.sessionId);
           setStudentId(stored.studentId || "");
         }
-        if (sessionCode && stored.studentId) {
+        if (initialSessionCode && stored.studentId) {
           setStudentId(stored.studentId);
         }
+        if (typeof stored.sessionWeek === "string" && stored.sessionWeek.trim().length > 0) {
+          setQuizKey(stored.sessionWeek);
+        }
+      } else if (targetSessionId) {
+        setSessionId(targetSessionId);
       }
     } catch {
       // ignore
     }
     setCompleted(false);
-  }, [sessionCode]);
+  }, [initialSessionCode, initialSessionId]);
 
   const handleDone = useCallback(() => {
-    try {
-      localStorage.removeItem("mdquiz_session");
-      localStorage.removeItem("mdquiz_pending_join");
-    } catch {
-      // ignore
-    }
+    clearSessionArtifacts();
     sock.disconnect();
     setCompleted(true);
   }, [sock]);
@@ -94,10 +128,18 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
       const res = await fetch(API.SESSION_BY_CODE.replace(":code", normalizedCode));
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (res.status === 404 || res.status === 410) {
+          clearSessionArtifacts();
+          setSessionId(null);
+          setQuizKey(null);
+        }
         throw new Error(data.error || "Session not found. Check the code and try again.");
       }
-      const data = await res.json();
+      const data: { sessionId: string; week?: string } = await res.json();
       setSessionId(data.sessionId);
+      if (typeof data.week === "string" && data.week.trim().length > 0) {
+        setQuizKey(data.week);
+      }
 
       // Store pending join info and session for the socket handler
       localStorage.setItem(
@@ -110,6 +152,7 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
         JSON.stringify({
           sessionId: data.sessionId,
           studentId: studentId.trim(),
+          sessionWeek: data.week,
           sessionToken:
             (() => {
               try {
@@ -131,6 +174,10 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
             })(),
         }),
       );
+
+      if (window.location.hash !== `#/s/${data.sessionId}`) {
+        window.location.hash = `/s/${data.sessionId}`;
+      }
     } catch (e) {
       setJoinError(e instanceof Error ? e.message : "Failed to join");
       setJoining(false);
@@ -160,6 +207,12 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
 
   useEffect(() => {
     if (sockError) {
+      const lowered = sockError.toLowerCase();
+      if (lowered.includes("ended") || lowered.includes("not found")) {
+        clearSessionArtifacts();
+        setSessionId(null);
+        setQuizKey(null);
+      }
       setJoinError(sockError);
       setJoining(false);
     }
@@ -178,7 +231,7 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
   if (!sock.sessionToken) {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center gap-6 p-6">
-        {!sessionCode && (
+        {!initialSessionCode && (
           <a href="#/" className="absolute top-4 left-4 text-zinc-500 hover:text-zinc-300 text-sm">
             &larr; Back
           </a>
@@ -294,7 +347,11 @@ export default function StudentView({ sessionCode }: { sessionCode?: string }) {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center gap-6 p-6">
         <h2 className="text-2xl font-bold text-white">
-          {state === "ENDED" ? "Final Results" : "Leaderboard"}
+          {state === "ENDED"
+            ? `Final Results${quizKey ? ` for ${formatQuizLabel(quizKey).toUpperCase()}` : ""}`
+            : quizKey
+              ? `Leaderboard for ${formatQuizLabel(quizKey).toUpperCase()}`
+              : "Leaderboard"}
         </h2>
         <Leaderboard
           entries={sock.leaderboard}

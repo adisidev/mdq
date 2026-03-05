@@ -23,6 +23,15 @@ export interface CreateSessionResponse {
   joinUrl: string;
 }
 
+export interface SessionRestoreResponse {
+  sessionId: string;
+  sessionCode: string;
+  week: string;
+  state: string;
+  currentQuestionIndex: number;
+  questionCount: number;
+}
+
 export interface InstructorSessionStatus {
   authenticated: boolean;
   configured: boolean;
@@ -159,5 +168,16 @@ export async function fetchSessionAccessInfo(sessionId: string): Promise<AccessI
     credentials: "same-origin",
   });
   if (!res.ok) throw new Error("Failed to fetch session access info");
+  return res.json();
+}
+
+export async function fetchSessionStateForRestore(sessionId: string): Promise<SessionRestoreResponse> {
+  const res = await fetch(apiPath(API.SESSION_STATE_RESTORE, { id: sessionId }), {
+    credentials: "same-origin",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Failed to restore session state");
+  }
   return res.json();
 }

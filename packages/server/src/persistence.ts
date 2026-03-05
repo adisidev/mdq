@@ -57,6 +57,17 @@ function sessionArtifactPrefix(session: Session): string {
   return `${sanitizeFileToken(session.sessionCode)}-${formatFileDateTime(session.createdAt)}`;
 }
 
+function formatQuizLabelFromKey(quizKey: string): string {
+  const normalized = quizKey.trim();
+  if (!normalized) {
+    return "MDQ";
+  }
+  if (/\bmdq\b/i.test(normalized)) {
+    return normalized;
+  }
+  return `${normalized} MDQ`;
+}
+
 export function getSessionResultsCsvPath(session: Session, baseDir?: string): string {
   return path.join(submissionsDir(baseDir), `${sessionArtifactPrefix(session)}.csv`);
 }
@@ -350,7 +361,7 @@ export function saveSessionSummaryMarkdown(
   lines.push("");
   lines.push(`- Session ID: ${session.sessionId}`);
   lines.push(`- Session Code: ${session.sessionCode}`);
-  lines.push(`- Week: ${session.week}`);
+  lines.push(`- Quiz: ${formatQuizLabelFromKey(session.week)}`);
   lines.push(`- Started At (ISO): ${toIso(session.createdAt)}`);
   lines.push(`- Ended At (ISO): ${toIso(endedAt)}`);
   lines.push(`- Duration: ${(durationMs / 1000).toFixed(1)}s`);

@@ -78,7 +78,7 @@ mdq solves these problems by using markdown files as the canonical quiz source, 
 | QR code generation | Generate and display a QR code for the session URL on the projector view. |
 | Auto-generated QR and access URL | On server startup, the backend calls `tailscale status --json` to read `Self.DNSName` (e.g., `my-laptop.tailnet-name.ts.net`) and constructs the public URL `https://<DNSName>`. It then calls the TinyURL free API (`https://tinyurl.com/api-create.php?url=<url>`, no API key needed) to produce a short URL (e.g., `https://tinyurl.com/abc123`). A QR code is generated server-side using the `qrcode` npm package and served as a PNG or SVG endpoint. The instructor's "Session Start" screen (before launching the quiz) prominently displays: (a) the full Tailscale Funnel URL, (b) the short URL, and (c) a large QR code that students can scan. The QR code and short URL remain visible on the instructor view during the quiz (in a corner or toggle panel) so latecomers can join. If the `tailscale` CLI is not available or Funnel is not active, the server falls back to displaying the local LAN IP with a warning that students on isolated campus WiFi may not be able to connect. |
 | Submission count display | Projector view must display submission count in format "X / Y answered" during active questions. |
-| Per-question time limit | Each question has a `time_limit` field (in seconds, default 20 if omitted in the markdown file). The server enforces the time limit by closing the submission window after the specified duration, even if the client is slow to reflect the countdown. The projector view displays a visible countdown timer. |
+| Per-question time limit | Each question has a `time_limit` field (in seconds, default 35 if omitted in the markdown file). The server enforces the time limit by closing the submission window after the specified duration, even if the client is slow to reflect the countdown. The projector view displays a visible countdown timer. |
 
 ### P2 (Nice to Have)
 
@@ -241,7 +241,7 @@ week13.md
 
 ### Format Specification
 
-Each question block supports an optional `time_limit:` field that specifies how many seconds students have to answer. If omitted, the default is 20 seconds. The time limit is server-enforced: the server closes the submission window after the specified duration regardless of client-side timer state.
+Each question block supports an optional `time_limit:` field that specifies how many seconds students have to answer. If omitted, the default is 35 seconds. The time limit is server-enforced: the server closes the submission window after the specified duration regardless of client-side timer state.
 
 ````markdown
 # Week 01 Quiz: Introduction to XR (10 Questions)
@@ -305,14 +305,14 @@ D. Option four
 ---
 ````
 
-In the examples above, the first question has a 30-second time limit, the second question uses the default (20 seconds, since `time_limit:` is omitted), and the multi-select question has a 45-second time limit.
+In the examples above, the first question has a 30-second time limit, the second question uses the default (35 seconds, since `time_limit:` is omitted), and the multi-select question has a 45-second time limit.
 
 ### Parsing Rules
 
 1. **Title**: The H1 heading (`# ...`) is the quiz title. The parenthetical "(N Questions)" is optional metadata.
 2. **Question separator**: Questions are separated by horizontal rules (`---`).
 3. **Topic header**: Each question starts with an H2 heading (`## Topic: Subtopic`). This is used for categorization and display.
-4. **Time limit**: An optional line `time_limit: N` (where N is an integer in seconds) appearing after the H2 header and before the question text. If omitted, defaults to 20 seconds. The parser looks for this line before the first paragraph of question text.
+4. **Time limit**: An optional line `time_limit: N` (where N is an integer in seconds) appearing after the H2 header and before the question text. If omitted, defaults to 35 seconds. The parser looks for this line before the first paragraph of question text.
 5. **Question text**: Everything between the H2 header (and optional `time_limit:` line) and the answer options. May include markdown formatting, code blocks, and images.
 6. **Answer options**: Lines starting with `A.`, `B.`, `C.`, `D.`, etc. (letter followed by period and space).
 7. **Correct answer (single)**: A blockquote line starting with `> Correct Answer:` followed by the letter and optionally the answer text.
@@ -508,7 +508,7 @@ interface Question {
   options: QuestionOption[];
   correctOptions: string[];  // e.g., ["B"] or ["A", "C"] for multi-select
   explanation: string;       // from Overall Feedback
-  timeLimitSec: number;      // default 20 if not specified in markdown
+  timeLimitSec: number;      // default 35 if not specified in markdown
 }
 
 interface QuestionOption {
@@ -602,7 +602,7 @@ data/
 
 ### `timeLimitSec` Default Behavior
 
-If a question's markdown does not include a `time_limit:` line, the default is 20 seconds. The server enforces this: when `questionStartedAt + (timeLimitSec * 1000)` is reached, the server automatically transitions to `QUESTION_CLOSED` and broadcasts `question:close`. Submissions arriving after this timestamp are rejected with `answer:rejected` regardless of network latency.
+If a question's markdown does not include a `time_limit:` line, the default is 35 seconds. The server enforces this: when `questionStartedAt + (timeLimitSec * 1000)` is reached, the server automatically transitions to `QUESTION_CLOSED` and broadcasts `question:close`. Submissions arriving after this timestamp are rejected with `answer:rejected` regardless of network latency.
 
 ## 13. Acceptance Criteria and Success Metrics (P1)
 
@@ -660,7 +660,7 @@ P1 is broken into seven milestones. Each milestone has concrete deliverables and
 **Deliverables:**
 - Markdown parser module that reads `weekNN.md` files and produces `Quiz` objects matching the Section 12 interface.
 - Validation layer that rejects malformed questions with descriptive errors (question index, file name, what is missing).
-- Unit tests covering: single-select, multi-select, code blocks, missing fields, `time_limit` parsing, default `time_limit` of 20s.
+- Unit tests covering: single-select, multi-select, code blocks, missing fields, `time_limit` parsing, default `time_limit` of 35s.
 
 **Verification:**
 - `npm test` passes all parser tests.

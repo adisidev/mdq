@@ -40,6 +40,10 @@ describe("REST API", () => {
         .expect(401);
 
       await request(protectedApp)
+        .get("/api/session/nope/state")
+        .expect(401);
+
+      await request(protectedApp)
         .post("/api/instructor/login")
         .send({ password: "wrong" })
         .expect(401);
@@ -50,10 +54,14 @@ describe("REST API", () => {
         .send({ password: "secret-password" })
         .expect(204);
 
-      await agent
+      const createRes = await agent
         .post("/api/session")
         .send({ week: "week01" })
         .expect(201);
+
+      await agent
+        .get(`/api/session/${createRes.body.sessionId}/state`)
+        .expect(200);
 
       const status = await agent
         .get("/api/instructor/session")
@@ -387,6 +395,32 @@ describe("REST API", () => {
       expect(res.body.fullUrl).toBe(`http://quiz-host.local:3001/join/${createRes.body.sessionCode}`);
       expect(res.body.fullUrl).toContain(`/join/${createRes.body.sessionCode}`);
       expect(res.body.qrTargetUrl).toContain(`/join/${createRes.body.sessionCode}`);
+    });
+
+    it("returns instructor restore snapshot for active session", async () => {
+      await request(app).post(`/api/session/${sessionId}/start`).expect(200);
+
+      const res = await request(app)
+        .get(`/api/session/${sessionId}/state`)
+        .expect(200);
+
+      expect(res.body.sessionId).toBe(sessionId);
+      expect(res.body.state).toBe("QUESTION_OPEN");
+      expect(res.body.questionCount).toBe(3);
+      expect(res.body.week).toBe("week01");
+    });
+
+    it("returns 410 for restore request on ended session", async () => {
+      await request(app).post(`/api/session/${sessionId}/start`).expect(200);
+      await request(app).post(`/api/session/${sessionId}/close`).expect(200);
+      await request(app).post(`/api/session/${sessionId}/reveal`).expect(200);
+      await request(app).post(`/api/session/${sessionId}/end`).expect(200);
+
+      const res = await request(app)
+        .get(`/api/session/${sessionId}/state`)
+        .expect(410);
+
+      expect(res.body.error).toContain("ended");
     });
 
     it("uses request host for startup access info fallback", async () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSocket } from "../hooks/useSocket";
 import type { QuestionState, RevealState } from "../hooks/useSocket";
 import {
@@ -13,6 +13,7 @@ import {
   showLeaderboard,
   hideLeaderboard,
   fetchSessionAccessInfo,
+  fetchSessionStateForRestore,
   type QuizSummary,
   type CreateSessionResponse,
 } from "../hooks/api";
@@ -23,6 +24,37 @@ import Leaderboard from "../components/Leaderboard";
 import QRPanel from "../components/QRPanel";
 
 type InstructorPhase = "setup" | "lobby" | "live" | "ended";
+const INSTRUCTOR_RESTORE_KEY = "mdquiz_instructor_session";
+
+interface StoredInstructorRestore {
+  sessionId: string;
+  sessionCode: string;
+  week: string;
+  createdAt: number;
+}
+
+function formatQuizLabel(quizKey: string): string {
+  const normalized = quizKey.trim();
+  if (!normalized) return "MDQ";
+  if (/\bmdq\b/i.test(normalized)) return normalized;
+  return `${normalized} MDQ`;
+}
+
+function clearInstructorRestore(): void {
+  try {
+    sessionStorage.removeItem(INSTRUCTOR_RESTORE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function saveInstructorRestore(restore: StoredInstructorRestore): void {
+  try {
+    sessionStorage.setItem(INSTRUCTOR_RESTORE_KEY, JSON.stringify(restore));
+  } catch {
+    // ignore
+  }
+}
 
 export default function InstructorView() {
   // Setup state
@@ -36,6 +68,9 @@ export default function InstructorView() {
   const [accessInfo, setAccessInfo] = useState<AccessInfo | null>(null);
   const [phase, setPhase] = useState<InstructorPhase>("setup");
   const [totalQuestionsInQuiz, setTotalQuestionsInQuiz] = useState(0);
+  const [quizLabel, setQuizLabel] = useState("");
+  const [restoreNotice, setRestoreNotice] = useState<string | null>(null);
+  const restoreAttemptedRef = useRef(false);
 
   // Socket connection (instructor role)
   const sock = useSocket(sessionInfo?.sessionId ?? null, "instructor");
@@ -59,6 +94,87 @@ export default function InstructorView() {
       .catch((e) => setErrorMsg(e.message));
   }, []);
 
+  useEffect(() => {
+    if (restoreAttemptedRef.current) return;
+    restoreAttemptedRef.current = true;
+
+    let stored: StoredInstructorRestore | null = null;
+    try {
+      const raw = sessionStorage.getItem(INSTRUCTOR_RESTORE_KEY);
+      if (raw) {
+        stored = JSON.parse(raw) as StoredInstructorRestore;
+      }
+    } catch {
+      clearInstructorRestore();
+      return;
+    }
+
+    if (!stored?.sessionId) {
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg(null);
+
+    fetchSessionStateForRestore(stored.sessionId)
+      .then(async (snapshot) => {
+        const restoredInfo: CreateSessionResponse = {
+          sessionId: snapshot.sessionId,
+          sessionCode: snapshot.sessionCode,
+          joinUrl: `/join/${snapshot.sessionCode}`,
+        };
+
+        setSessionInfo(restoredInfo);
+        setSelectedWeek(snapshot.week);
+        setTotalQuestionsInQuiz(snapshot.questionCount);
+        setQuizLabel(formatQuizLabel(snapshot.week));
+
+        if (snapshot.state === "LOBBY") {
+          setPhase("lobby");
+        } else {
+          setPhase("live");
+        }
+
+        try {
+          const ai = await fetchSessionAccessInfo(snapshot.sessionId);
+          setAccessInfo(ai);
+        } catch {
+          // Non-critical
+        }
+
+        setRestoreNotice("Resumed active session after refresh.");
+      })
+      .catch((error) => {
+        clearInstructorRestore();
+        const message = error instanceof Error ? error.message : "Unable to resume previous session.";
+        if (/ended|not found|missing/i.test(message)) {
+          setRestoreNotice("Previous session is no longer active. Start a new session when ready.");
+        } else {
+          setRestoreNotice("Unable to resume previous session. Start a new session when ready.");
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!sessionInfo) {
+      clearInstructorRestore();
+      return;
+    }
+
+    if (phase === "ended" || phase === "setup") {
+      clearInstructorRestore();
+      return;
+    }
+
+    saveInstructorRestore({
+      sessionId: sessionInfo.sessionId,
+      sessionCode: sessionInfo.sessionCode,
+      week: selectedWeek,
+      createdAt: Date.now(),
+    });
+  }, [sessionInfo, phase, selectedWeek]);
+
   // ── Actions ──────────────────────────────
 
   const handleCreateSession = useCallback(async () => {
@@ -70,6 +186,8 @@ export default function InstructorView() {
       setSessionInfo(info);
       const quiz = quizzes.find((q) => q.week === selectedWeek);
       if (quiz) setTotalQuestionsInQuiz(quiz.questionCount);
+      setQuizLabel(formatQuizLabel(quiz?.week || selectedWeek));
+      setRestoreNotice(null);
       setPhase("lobby");
 
       // Fetch session-specific access info for QR/URL display
@@ -119,9 +237,12 @@ export default function InstructorView() {
 
   const handleBackToSetup = useCallback(() => {
     sock.disconnect();
+    clearInstructorRestore();
     setSessionInfo(null);
     setAccessInfo(null);
     setTotalQuestionsInQuiz(0);
+    setQuizLabel("");
+    setRestoreNotice(null);
     setErrorMsg(null);
     setPhase("setup");
   }, [sock]);
@@ -140,6 +261,12 @@ export default function InstructorView() {
         {errorMsg && (
           <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-xl max-w-md w-full text-center">
             {errorMsg}
+          </div>
+        )}
+
+        {restoreNotice && (
+          <div className="bg-emerald-900/40 border border-emerald-700 text-emerald-100 px-4 py-3 rounded-xl max-w-2xl w-full text-center text-sm">
+            {restoreNotice}
           </div>
         )}
 
@@ -242,6 +369,12 @@ export default function InstructorView() {
           </div>
         )}
 
+        {restoreNotice && (
+          <div className="bg-emerald-900/40 border border-emerald-700 text-emerald-100 px-4 py-3 rounded-xl text-sm text-center max-w-2xl w-full">
+            {restoreNotice}
+          </div>
+        )}
+
         <button
           onClick={() => handleAction(() => startSession(sid), "start")}
           disabled={loading}
@@ -258,6 +391,11 @@ export default function InstructorView() {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center gap-8 p-8">
         <h1 className="text-3xl font-bold text-white">Session Ended</h1>
+        {quizLabel && (
+          <h2 className="text-xl font-semibold text-zinc-300 text-center">
+            Leaderboard for {quizLabel.toUpperCase()}
+          </h2>
+        )}
         <Leaderboard
           entries={sock.leaderboard}
           totalQuestions={sock.totalQuestions || totalQuestionsInQuiz}
@@ -281,8 +419,10 @@ export default function InstructorView() {
       sessionCode={sessionInfo?.sessionCode || ""}
       accessInfo={accessInfo}
       totalQuestionsInQuiz={totalQuestionsInQuiz}
+      quizLabel={quizLabel}
       loading={loading}
       errorMsg={errorMsg}
+      restoreNotice={restoreNotice}
       onAction={handleAction}
     />
   );
@@ -296,8 +436,10 @@ function LiveView({
   sessionCode,
   accessInfo,
   totalQuestionsInQuiz,
+  quizLabel,
   loading,
   errorMsg,
+  restoreNotice,
   onAction,
 }: {
   sock: ReturnType<typeof useSocket>;
@@ -305,8 +447,10 @@ function LiveView({
   sessionCode: string;
   accessInfo: AccessInfo | null;
   totalQuestionsInQuiz: number;
+  quizLabel: string;
   loading: boolean;
   errorMsg: string | null;
+  restoreNotice: string | null;
   onAction: (action: () => Promise<unknown>, label: string) => void;
 }) {
   const state = sock.sessionState as SessionState;
@@ -496,7 +640,9 @@ function LiveView({
         {/* Leaderboard view */}
         {state === "LEADERBOARD" && !isReviewing && (
           <div className="w-full">
-            <h2 className="text-2xl font-bold text-white text-center mb-6">Leaderboard</h2>
+            <h2 className="text-2xl font-bold text-white text-center mb-6">
+              {quizLabel ? `Leaderboard for ${quizLabel.toUpperCase()}` : "Leaderboard"}
+            </h2>
             <Leaderboard
               entries={sock.leaderboard}
               totalQuestions={sock.totalQuestions || totalQuestionsInQuiz}
@@ -510,6 +656,12 @@ function LiveView({
       {errorMsg && (
         <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-xl text-center mt-4">
           {errorMsg}
+        </div>
+      )}
+
+      {restoreNotice && (
+        <div className="bg-emerald-900/40 border border-emerald-700 text-emerald-100 px-4 py-3 rounded-xl text-center mt-4 text-sm">
+          {restoreNotice}
         </div>
       )}
 

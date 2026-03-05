@@ -23,12 +23,12 @@ D. Extreme Resolution
 **When `time_limit` is omitted, what default is applied?**
 
 A. 10
-B. 20
-C. 15
+B. 35
+C. 20
 D. 60
 
 > Correct Answer: B
-> Overall Feedback: The default per-question time limit is 20 seconds.
+> Overall Feedback: The default per-question time limit is 35 seconds.
 
 ---
 

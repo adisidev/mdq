@@ -43,8 +43,12 @@ export default function App() {
     return <InstructorGate />;
   }
 
-  if (route.page === "join" || route.page === "student") {
-    return <StudentView sessionCode={route.param} />;
+  if (route.page === "join") {
+    return <StudentView initialSessionCode={route.param} />;
+  }
+
+  if (route.page === "student") {
+    return <StudentView initialSessionId={route.param} />;
   }
 
   // Home: role picker

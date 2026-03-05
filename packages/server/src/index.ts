@@ -15,6 +15,7 @@ import * as fs from "fs";
 import express from "express";
 import type { AddressInfo } from "net";
 import { randomUUID } from "crypto";
+import { execSync } from "child_process";
 
 function parsePort(raw: string | undefined, fallback: number): number {
   const parsed = parseInt(raw || "", 10);
@@ -31,6 +32,73 @@ const clientDist = path.join(__dirname, "../../client/dist");
 // We need io available for the state change callback, so we use a container
 // that's populated after setupSocket. The callback won't fire before the server starts.
 const ioRef: { current: ReturnType<typeof setupSocket> | null } = { current: null };
+
+interface FunnelReadinessResult {
+  ready: boolean;
+  reason: string;
+  details: string[];
+}
+
+function inspectFunnelReadiness(publicUrl: string, boundPort: number): FunnelReadinessResult {
+  try {
+    const raw = execSync("tailscale funnel status --json", {
+      timeout: 5000,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    const statusText = String(raw);
+    const host = (() => {
+      try {
+        return new URL(publicUrl).hostname;
+      } catch {
+        return "";
+      }
+    })();
+
+    const hasPortMatch = statusText.includes(`:${boundPort}`) || statusText.includes(`"port":${boundPort}`);
+    const hasHostMatch = host ? statusText.includes(host) : false;
+
+    if (!hasPortMatch) {
+      return {
+        ready: false,
+        reason: "wrong-port",
+        details: [
+          `funnel does not appear to publish bound port ${boundPort}`,
+          `run: tailscale funnel ${boundPort}`,
+          "run: tailscale funnel status",
+        ],
+      };
+    }
+
+    if (!hasHostMatch) {
+      return {
+        ready: false,
+        reason: "host-mismatch",
+        details: [
+          `funnel status does not include expected host for ${publicUrl}`,
+          "run: tailscale funnel status",
+          "verify tailscale status host and Funnel host are aligned",
+        ],
+      };
+    }
+
+    return {
+      ready: true,
+      reason: "ok",
+      details: [],
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown";
+    return {
+      ready: false,
+      reason: "status-unavailable",
+      details: [
+        `unable to read tailscale funnel status: ${message}`,
+        "run: tailscale funnel status",
+      ],
+    };
+  }
+}
 
 function sessionRoom(sessionId: string): string {
   return `session:${sessionId}`;
@@ -134,6 +202,60 @@ async function onListening(): Promise<void> {
     }
     if (info.warning) {
       console.warn(`Warning: ${info.warning}`);
+    }
+
+    if (info.source === "tailscale") {
+      const readiness = inspectFunnelReadiness(info.fullUrl, boundPort);
+      console.log(
+        `[mdq readiness] funnel_ready=${readiness.ready} reason=${readiness.reason} bound_port=${boundPort} public_url=${info.fullUrl}`,
+      );
+      if (!readiness.ready) {
+        for (const detail of readiness.details) {
+          console.warn(`[mdq readiness] ${detail}`);
+        }
+      }
+    } else {
+      console.log(
+        `[mdq readiness] funnel_ready=false reason=tailscale-unavailable bound_port=${boundPort} public_url=${info.fullUrl}`,
+      );
+      console.warn("[mdq readiness] public classroom access may fail without Tailscale Funnel");
+      console.warn(`[mdq readiness] run: tailscale funnel ${boundPort}`);
+    }
+
+    if (info.source === "tailscale") {
+      const healthUrl = `${info.fullUrl}/api/health`;
+      try {
+        const response = await fetch(healthUrl, { signal: AbortSignal.timeout(5000) });
+        const payloadUnknown = await response.json().catch(() => ({}));
+        const payload =
+          payloadUnknown && typeof payloadUnknown === "object"
+            ? (payloadUnknown as { instanceId?: unknown })
+            : {};
+        const publicInstanceId =
+          typeof payload.instanceId === "string" ? payload.instanceId : "";
+
+        if (!response.ok || !publicInstanceId) {
+          console.warn(
+            `[mdq readiness] funnel_ready=false reason=health-mismatch bound_port=${boundPort} public_url=${info.fullUrl}`,
+          );
+          console.warn(`[mdq readiness] failed health probe at ${healthUrl}`);
+          console.warn("[mdq readiness] run: tailscale funnel status");
+        } else if (publicInstanceId !== instanceId) {
+          console.warn(
+            `[mdq readiness] funnel_ready=false reason=instance-mismatch bound_port=${boundPort} public_url=${info.fullUrl}`,
+          );
+          console.warn(
+            `[mdq readiness] public host points to instance ${publicInstanceId}, local instance is ${instanceId}`,
+          );
+          console.warn("[mdq readiness] stop old process on published port and retry");
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "unknown";
+        console.warn(
+          `[mdq readiness] funnel_ready=false reason=health-unreachable bound_port=${boundPort} public_url=${info.fullUrl}`,
+        );
+        console.warn(`[mdq readiness] public health probe failed: ${message}`);
+      }
     }
 
     if (usedFallbackPort && info.source === "tailscale") {
