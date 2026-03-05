@@ -291,6 +291,28 @@ export function createApp(quizDirOrOpts?: string | AppOptions) {
     });
   });
 
+  app.get(API.SESSION_STATE_RESTORE, requireInstructorAuth, (req, res) => {
+    withSession(req, res, (session) => {
+      if (session.state === "ENDED") {
+        return res.status(410).json({ error: "Session has ended" });
+      }
+
+      const quiz = getQuizForSession(session.week);
+      if (!quiz) {
+        return res.status(500).json({ error: "Quiz data not found" });
+      }
+
+      return res.json({
+        sessionId: session.sessionId,
+        sessionCode: session.sessionCode,
+        week: session.week,
+        state: session.state,
+        currentQuestionIndex: session.currentQuestionIndex,
+        questionCount: quiz.questions.length,
+      });
+    });
+  });
+
   // Helper middleware to get session by :id param
   function withSession(
     req: express.Request,

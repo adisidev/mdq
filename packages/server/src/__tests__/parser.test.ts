@@ -65,7 +65,7 @@ B. No
       expect(result.quiz!.questions[0].timeLimitSec).toBe(45);
     });
 
-    it("defaults time_limit to 20 when not specified", () => {
+    it("defaults time_limit to 35 when not specified", () => {
       const md = `# Quiz
 
 ---
@@ -83,7 +83,7 @@ B. No
 ---
 `;
       const result = parseQuizMarkdown(md, "week01.md");
-      expect(result.quiz!.questions[0].timeLimitSec).toBe(20);
+      expect(result.quiz!.questions[0].timeLimitSec).toBe(35);
     });
 
     it("parses multi-select questions", () => {
@@ -198,7 +198,7 @@ B. Beta
       const result = parseQuizMarkdown(md, "week01.md");
       expect(result.errors).toHaveLength(0);
       expect(result.quiz!.questions).toHaveLength(2);
-      expect(result.quiz!.questions[0].timeLimitSec).toBe(20);
+      expect(result.quiz!.questions[0].timeLimitSec).toBe(35);
       expect(result.quiz!.questions[1].timeLimitSec).toBe(10);
     });
   });
@@ -393,7 +393,7 @@ B. No
       expect(result.errors).toHaveLength(0);
       expect(result.quiz!.questions).toHaveLength(3);
       expect(result.quiz!.questions[0].timeLimitSec).toBe(30);
-      expect(result.quiz!.questions[1].timeLimitSec).toBe(20); // default
+      expect(result.quiz!.questions[1].timeLimitSec).toBe(35); // default
       expect(result.quiz!.questions[2].timeLimitSec).toBe(45);
       expect(result.quiz!.questions[2].correctOptions).toEqual(["A", "B", "D"]);
     });

@@ -468,6 +468,7 @@ describe("Persistence", () => {
       const summaryPath = getSessionSummaryMarkdownPath(session, tempDir);
       const summary = fs.readFileSync(summaryPath, "utf-8");
 
+      expect(summary).toContain("- Quiz: week01 MDQ");
       expect(summary).toContain("## Leaderboard Summary");
       expect(summary).toContain("- Ranked Participants: 3");
       expect(summary).toContain("- Winner: s001 (Alice), score 2/2");

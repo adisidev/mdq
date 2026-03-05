@@ -167,6 +167,7 @@ export const API = {
   SESSION_LEADERBOARD: "/api/session/:id/leaderboard",
   SESSION_LEADERBOARD_SHOW: "/api/session/:id/leaderboard-show",
   SESSION_LEADERBOARD_HIDE: "/api/session/:id/leaderboard-hide",
+  SESSION_STATE_RESTORE: "/api/session/:id/state",
   SESSION_ACCESS_INFO: "/api/session/:id/access-info",
   SESSION_BY_CODE: "/api/session/by-code/:code",
   ACCESS_INFO: "/api/access-info",
@@ -283,7 +284,7 @@ export interface AccessInfo {
 // (The API object above includes ACCESS_INFO and QR_CODE already)
 
 // ── Constants ───────────────────────────────
-export const DEFAULT_TIME_LIMIT_SEC = 20;
+export const DEFAULT_TIME_LIMIT_SEC = 35;
 export const SESSION_CODE_LENGTH = 6;
 export const DEFAULT_PORT = 3000;
 export const TICK_INTERVAL_MS = 1000;

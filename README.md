@@ -111,7 +111,8 @@ mdq is optimized for a narrow classroom usage scenario:
 - one instructor-led live room
 - simple leaderboard and answer distribution
 - markdown files as the source of truth
-- fast content edits without admin/logistics inertia, including agent-friendly quiz iteration
+- zero-friction quiz updates: edit markdown in `data/quizzes/`, click `Reload Quiz Files`, and run the next session
+- agent-friendly quiz iteration without export/import overhead
 
 Because sessions are short and operationally simple, you do not need a large multi-tenant cloud quiz stack with heavy admin workflows and feature bloat.
 
