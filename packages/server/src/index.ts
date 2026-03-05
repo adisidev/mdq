@@ -27,6 +27,7 @@ const DEFAULT_PORT_FALLBACKS = 10;
 const maxPortFallbacks = parsePort(process.env.PORT_FALLBACKS, DEFAULT_PORT_FALLBACKS);
 const instanceId = (process.env.MDQ_INSTANCE_ID || "").trim() || randomUUID();
 const quizDir = process.env.QUIZ_DIR || path.resolve(__dirname, "../../../data/quizzes");
+const dataDir = process.env.DATA_DIR || path.resolve(process.cwd(), "data");
 const clientDist = path.join(__dirname, "../../client/dist");
 
 // We need io available for the state change callback, so we use a container
@@ -106,6 +107,7 @@ function sessionRoom(sessionId: string): string {
 
 const app = createApp({
   quizDir,
+  dataDir,
   instanceId,
   onStateChange: (session: Session, sessionId: string, newState: SessionState, quiz?: Quiz) => {
     const io = ioRef.current;
