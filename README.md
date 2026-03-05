@@ -2,7 +2,7 @@
 
 MCQs are passe. Enter MDQs. Human- and agent-friendly Markdown Quizzes.
 
-No clunky interfaces. No proprietary nonsense. No database.
+No clunky interfaces. No database. No proprietary nonsense.
 
 Just your own machine and a public secure tunnel (like Tailscale).
 
@@ -20,25 +20,16 @@ MDQ is an independent project and is not affiliated with, endorsed by, or sponso
   - `data/quizzes/`: your editable quiz source files
   - `data/sessions/`, `data/submissions/`, `data/winners/`, `data/access/`: generated runtime data
   - `data/access/current.json` may contain your active Tailscale or LAN access URL and should stay local
-- `docs/DEV-*.md`: local development planning docs (gitignored by naming convention)
 
 The `data/` folder is intentionally ignored so local state and access info do not get committed.
 
+Server runtime note:
+
+- MDQ writes runtime artifacts to the repository root `data/` directory by default.
+- If you previously ran older builds, you may still have a local `packages/server/data/` folder from earlier path resolution.
+- `packages/server/data/` is local runtime output, not source. It is safe to delete locally when the server is stopped.
+
 ## Static Demo Gallery
-
-For open-source preview, the repo includes 7 curated UI screenshots under `docs/demo/`.
-
-Selection rule (deterministic): newest 7 files in `~/Library/Mobile Documents/com~apple~CloudDocs/Downloads` matching `Screenshot 2026-03-05 at 6.*PM.png` (excluding the 8th oldest candidate).
-
-- `Screenshot 2026-03-05 at 6.06.57 PM.png` -> `docs/demo/mdq-demo-01.png`
-- `Screenshot 2026-03-05 at 6.06.39 PM.png` -> `docs/demo/mdq-demo-02.png`
-- `Screenshot 2026-03-05 at 6.05.51 PM.png` -> `docs/demo/mdq-demo-03.png`
-- `Screenshot 2026-03-05 at 6.05.32 PM.png` -> `docs/demo/mdq-demo-04.png`
-- `Screenshot 2026-03-05 at 6.05.10 PM.png` -> `docs/demo/mdq-demo-05.png`
-- `Screenshot 2026-03-05 at 6.04.51 PM.png` -> `docs/demo/mdq-demo-06.png`
-- `Screenshot 2026-03-05 at 6.01.57 PM.png` -> `docs/demo/mdq-demo-07.png`
-
-Images are resized to max dimension 1400px for a lighter repo footprint.
 
 ![MDQ demo 1](docs/demo/mdq-demo-01.png)
 ![MDQ demo 2](docs/demo/mdq-demo-02.png)
@@ -79,7 +70,7 @@ If `VITE_INSTRUCTOR_ROUTE_SEGMENT` is unset, the default segment is `instructor`
 
 ### 2) iPad instructor flow (private)
 
-**Security model:** mdq serves one built client bundle to everyone (students and instructor). `VITE_INSTRUCTOR_ROUTE_SEGMENT` is build-time routing only. Real instructor access is gated by a server-side login cookie created after entering `INSTRUCTOR_PASSWORD`. The password is never bundled into client code.
+**Security model:** MDQ serves one built client bundle to everyone (students and instructor). `VITE_INSTRUCTOR_ROUTE_SEGMENT` is build-time routing only. Real instructor access is gated by a server-side login cookie created after entering `INSTRUCTOR_PASSWORD`. The password is never bundled into client code.
 
 1. Build the client with route segment:
    ```bash
@@ -119,14 +110,14 @@ tailscale funnel 3000
 
 Then share the generated `https://<machine>.ts.net` URL (or short URL / QR shown in the instructor screen).
 
-If students see `Session not found for that code`, verify your Tailscale Funnel is bound to the same port your active mdq server process is using.
+If students see `Session not found for that code`, verify your Tailscale Funnel is bound to the same port your active MDQ server process is using.
 
 Why Tailscale works (plain language):
 
-- Tailscale creates a secure, encrypted path between your class devices and your mdq server.
+- Tailscale creates a secure, encrypted path between your class devices and your MDQ server.
 - For normal Tailscale access, each device must be signed in and approved first.
 - With Funnel, anyone who has the URL can reach that one published quiz page.
-- When you run `tailscale funnel 3000`, you are publishing only the mdq web app on that one port.
+- When you run `tailscale funnel 3000`, you are publishing only the MDQ web app on that one port.
 - This is not the same as opening your whole computer. It does not expose your files, terminal, or other apps unless you explicitly publish those too.
 - If the link is shared outside class, outsiders could still reach the quiz page, so keep session links short-lived and private.
 
@@ -138,7 +129,7 @@ Student QR behavior:
 
 ## Why This Works
 
-mdq is optimized for a narrow classroom usage scenario:
+MDQ is optimized for a narrow classroom usage scenario:
 
 - short, synchronous quiz sessions
 - one instructor-led live room
@@ -158,7 +149,7 @@ Instructor Browser                 Student Browsers
        |                                 |
        +-------------+-------------------+
                      |
-             Node.js + Express + Socket.IO (mdq server)
+             Node.js + Express + Socket.IO (MDQ server)
                      |
           +----------+-----------+
           |                      |
@@ -180,7 +171,7 @@ Design notes:
 
 Images and embedded video in quiz content are a future enhancement.
 
-For now, mdq assumes image or video context is shown by the instructor in slides during class, while the quiz app handles prompts, options, explanations, and scoring.
+For now, MDQ assumes image or video context is shown by the instructor in slides during class, while the quiz app handles prompts, options, explanations, and scoring.
 
 ## Security and Risk
 
@@ -217,13 +208,14 @@ Cons:
 - Slight complexity: you need to manage a Dockerfile and container setup.
 - Overhead: minimal extra resource use, but not essential for a simple class deployment.
 
-In summary, Docker offers structure, but may be overkill if you are running a simple Node.js quiz with controlled input. As long as you keep your app scoped, you are in good shape.
+In summary, Docker offers structure, but may be overkill if you are running a simple Node.js quiz with controlled input. As long as you keep your app scoped, this is mostly sufficient but of course containerizing is always an option for extra isolation.
 
 ## Safe Contribution Workflow
 
 - Commit code changes under `packages/`, `docs/`, `samples/`, scripts, and config files
 - Keep personal/local files under `data/`
 - Keep local planning notes in `docs/` using `DEV-*.md` names so they stay untracked
+- Keep public docs in `docs/` with non-`DEV-` names (for example runbooks or published evidence)
 - Do not commit `.env*` or logs
 
 You can push to `main` without exposing local runtime artifacts if you keep private files in `data/`.
