@@ -245,6 +245,10 @@ In summary, Docker offers structure, but may be overkill if you are running a si
 
 ## Safe Contribution Workflow
 
+Related docs:
+
+- `docs/classquiz-analysis.md`: ClassQuiz codebase summary and MDQ feature roadmap notes
+
 - Commit code changes under `packages/`, `docs/`, `samples/`, scripts, and config files
 - Keep personal/local files under `data/`
 - Keep local planning notes in `docs/` using `DEV-*.md` names so they stay untracked
