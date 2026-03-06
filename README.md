@@ -93,6 +93,12 @@ If `VITE_INSTRUCTOR_ROUTE_SEGMENT` is unset, the default segment is `instructor`
 
 4. **Important limitation:** The longer route is still obscurity, not authentication by itself. Keep using a strong `INSTRUCTOR_PASSWORD` and avoid sharing your instructor route.
 
+Verification status for `VITE_INSTRUCTOR_ROUTE_SEGMENT`:
+
+- Covered by type/build checks and server integration tests in this repo.
+- Also smoke-tested by building with a non-default route segment and validating instructor login flow against that hash route.
+- There is currently no dedicated client unit-test file that isolates hash-route parsing logic, so validate your exact route string before live class.
+
 Tip for classroom privacy and mobility: present from iPad, add MDQ to your iPad Home Screen, and launch it as a web app. This keeps browser chrome out of view, hides the full URL during projection, and lets you walk around while controlling the session.
 
 ### iPad Home Screen bad-state recovery
