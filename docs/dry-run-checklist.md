@@ -7,7 +7,7 @@ Pre-class verification steps for running mdq live. Covers both Tailscale-availab
 ### 1. Environment Check
 
 - [ ] Node.js installed (`node -v`, need v18+)
-- [ ] Dependencies installed (`cd ~/repos/mdq && npm install`)
+- [ ] Dependencies installed (`cd /path/to/mdq && npm install`)
 - [ ] Local data dirs bootstrapped (`npm run setup:local`)
 - [ ] Quiz file ready (`data/quizzes/weekNN.md` exists, validated)
 - [ ] If quiz markdown was edited while server is already running, use "Reload Quiz Files" in instructor setup (no rebuild needed)
@@ -39,7 +39,7 @@ Tailscale lets students reach your laptop from campus Wi-Fi without port forward
    This creates a public `https://<machine>.ts.net` URL.
 3. Start the server:
    ```bash
-   cd ~/repos/mdq
+   cd /path/to/mdq
    npm run start --workspace=@mdq/server
    ```
 4. The server will auto-detect Tailscale and print the access URL + QR code.
