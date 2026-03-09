@@ -37,7 +37,7 @@ fi
 
 cat <<EOF
 Local workspace is ready.
-- Editable quizzes: data/quizzes/ (ships with sample `week00.md`)
+- Editable quizzes: data/quizzes/ (ships with sample week00.md)
 - Quiz images: data/images/
 - Runtime output: data/sessions/, data/submissions/, data/winners/, data/access/
 - Optional local config: copy data/config.example.json to data/config.json
