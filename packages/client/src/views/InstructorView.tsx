@@ -561,6 +561,10 @@ function LiveView({
               dangerouslySetInnerHTML={{ __html: displayQuestion.text }}
             />
 
+            <div className={`selection-mode-chip ${displayQuestion.allowsMultiple ? "selection-mode-chip-multi" : "selection-mode-chip-single"}`}>
+              {displayQuestion.allowsMultiple ? "Students can pick multiple options" : "Students can pick one option"}
+            </div>
+
             {/* Options (display only, no interaction on instructor) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl">
               {displayQuestion.options.map((opt) => (
@@ -568,7 +572,7 @@ function LiveView({
                   key={opt.label}
                   className="bg-zinc-800 border border-zinc-700 rounded-xl px-5 py-4 flex items-start gap-3"
                 >
-                  <span className="bg-zinc-700 text-zinc-300 font-mono font-bold w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-lg">
+                  <span className={`bg-zinc-700 text-zinc-300 font-mono font-bold w-9 h-9 flex items-center justify-center shrink-0 text-lg ${displayQuestion.allowsMultiple ? "rounded-lg" : "rounded-full"}`}>
                     {opt.label}
                   </span>
                   <span

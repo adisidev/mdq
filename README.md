@@ -15,7 +15,8 @@ MDQ is an independent project and is not affiliated with, endorsed by, or sponso
 ## Open Source Repo Layout
 
 - `packages/`: app code (safe to commit)
-- `samples/quizzes/`: tracked sample quiz markdown for onboarding
+- `samples/quizzes/`: tracked sample smoke quiz markdown for onboarding
+- `samples/images/`: tracked sample image assets copied into local runtime storage
 - `data/`: local-only runtime and private instance data (gitignored)
   - `data/quizzes/`: your editable quiz source files
   - `data/images/`: quiz image attachments referenced from markdown
@@ -43,7 +44,7 @@ npm install
 npm run setup:local
 ```
 
-This creates local `data/` directories, including `data/images/`, and copies sample quizzes into `data/quizzes/`.
+This creates local `data/` directories, including `data/images/`, then copies the sample smoke quiz into `data/quizzes/week00.md` and the sample SVG attachment into `data/images/`.
 
 Optional local runtime settings live in `data/config.json` (copy from `data/config.example.json`). The tracked example now includes `theme`, which defaults to `dark` and also accepts `light`.
 

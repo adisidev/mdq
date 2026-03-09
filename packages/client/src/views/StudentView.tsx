@@ -412,7 +412,9 @@ function QuestionView({
   const toggleOption = (label: string) => {
     if (submitted || state === "QUESTION_CLOSED") return;
     setSelected((prev) =>
-      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label],
+      question.allowsMultiple
+        ? (prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label])
+        : (prev.includes(label) ? [] : [label]),
     );
   };
 
@@ -422,6 +424,9 @@ function QuestionView({
   };
 
   const isClosed = state === "QUESTION_CLOSED";
+  const selectionModeText = question.allowsMultiple
+    ? "You can select multiple answers"
+    : "Select only one answer";
 
   return (
     <div className="min-h-dvh flex flex-col p-4 pb-safe">
@@ -443,6 +448,10 @@ function QuestionView({
         className="quiz-html text-lg text-white leading-relaxed mb-6"
         dangerouslySetInnerHTML={{ __html: question.text }}
       />
+
+      <div className={`selection-mode-card mb-5 rounded-2xl border px-4 py-3 ${question.allowsMultiple ? "selection-mode-card-multi" : "selection-mode-card-single"}`}>
+        <div className="selection-mode-text">{selectionModeText}</div>
+      </div>
 
       {/* Options */}
       <div className="space-y-3 flex-1">
@@ -470,7 +479,8 @@ function QuestionView({
             >
               <span
                 className={`
-                  w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-mono font-bold text-sm
+                  option-marker w-8 h-8 flex items-center justify-center shrink-0 font-mono font-bold text-sm
+                  ${question.allowsMultiple ? "rounded-lg" : "rounded-full"}
                   ${
                     wasSubmitted || isSelected
                       ? "bg-indigo-600 text-white"
@@ -505,7 +515,7 @@ function QuestionView({
             disabled={selected.length === 0}
             className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white font-semibold py-4 rounded-xl transition-colors text-lg"
           >
-            Submit Answer
+            {question.allowsMultiple ? "Submit Selections" : "Submit Answer"}
           </button>
         )}
       </div>
