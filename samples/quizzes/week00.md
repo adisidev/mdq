@@ -22,32 +22,37 @@ D. Browser developer tools
 
 ## System Check: Student Join
 
+time_limit: 25
+multi_select: true
+
 A student opens the join link and enters their student ID.
 
-**What should happen next if the session code is valid?**
+**Which details should confirm the join flow is working before the first question opens?**
 
-A. The app closes automatically
-B. The student sees a waiting state until the question opens
+A. The student sees a waiting state until the instructor starts the quiz
+B. The session code stays visible on the join form
 C. The student is sent directly to the leaderboard
-D. The student is blocked until all students are present
+D. The student can see their student ID and optional display name were accepted
 
-> Correct Answer: B. The student sees a waiting state until the question opens
-> Overall Feedback: Students join first, then wait in lobby until the instructor starts the question.
+> Correct Answers: A, D
+> Overall Feedback: A valid join keeps the student in the lobby until the instructor starts, and the accepted student identity should carry into the live session.
 
 ---
 
-## System Check: Scoring and Tie Break
+## System Check: Image Attachment
 
 time_limit: 25
 
-**How does the leaderboard rank students with the same number of correct answers?**
+![](../images/week00-smoke-diagram.svg)
 
-A. Earliest total response time ranks higher
-B. Latest total response time ranks higher
-C. Random order every refresh
-D. Alphabetical by display name only
+**According to the sample setup diagram, which device is serving the live mdq session?**
 
-> Correct Answer: A. Earliest total response time ranks higher
-> Overall Feedback: Ranking is by correct answers descending, then total response time ascending as tie break.
+A. Student phone
+B. Instructor laptop
+C. Classroom projector
+D. Campus Wi-Fi router
+
+> Correct Answer: B. Instructor laptop
+> Overall Feedback: The diagram shows the instructor laptop hosting mdq, while the phone joins as a student client and the projector mirrors the instructor screen.
 
 ---

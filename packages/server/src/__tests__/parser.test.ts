@@ -37,6 +37,7 @@ D. 6
       expect(question.subtopic).toBe("Subtopic");
       expect(question.options).toHaveLength(4);
       expect(question.correctOptions).toEqual(["B"]);
+      expect(question.allowsMultiple).toBe(false);
       expect(question.explanation).toBe("Basic arithmetic.");
       expect(question.timeLimitSec).toBe(DEFAULT_TIME_LIMIT_SEC);
     });
@@ -109,6 +110,32 @@ D. Fourth
       expect(result.errors).toHaveLength(0);
       const q = result.quiz!.questions[0];
       expect(q.correctOptions).toEqual(["A", "C"]);
+      expect(q.allowsMultiple).toBe(true);
+    });
+
+    it("supports explicit multi_select for single-answer questions", () => {
+      const md = `# Quiz
+
+---
+
+## Multi Select Mode
+
+multi_select: true
+
+**Pick any options you think fit.**
+
+A. First
+B. Second
+C. Third
+
+> Correct Answer: B
+> Overall Feedback: Only B is graded as correct.
+
+---
+`;
+      const result = parseQuizMarkdown(md, "week01.md");
+      expect(result.errors).toHaveLength(0);
+      expect(result.quiz!.questions[0].allowsMultiple).toBe(true);
     });
 
     it("uses full week key from variant filenames", () => {
@@ -304,6 +331,31 @@ B. No
       expect(result.errors[0].detail).toContain("Missing correct answer");
     });
 
+    it("rejects multi_select false when multiple correct answers are declared", () => {
+      const md = `# Quiz
+
+---
+
+## Invalid Config
+
+multi_select: false
+
+**Select all that apply.**
+
+A. First
+B. Second
+C. Third
+
+> Correct Answers: A, C
+> Overall Feedback: A and C are correct.
+
+---
+`;
+      const result = parseQuizMarkdown(md, "test.md");
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].detail).toContain("multi_select: false");
+    });
+
     it("reports missing options", () => {
       const md = `# Quiz
 
@@ -446,6 +498,7 @@ B. No
       expect(result.quiz!.questions[1].timeLimitSec).toBe(35); // default
       expect(result.quiz!.questions[2].timeLimitSec).toBe(45);
       expect(result.quiz!.questions[2].correctOptions).toEqual(["A", "B", "D"]);
+      expect(result.quiz!.questions[2].allowsMultiple).toBe(true);
     });
 
     it("parses week02.md", () => {

@@ -116,6 +116,8 @@ function parseQuestionBlock(block: string, index: number, sourceFile: string): Q
     }
   }
 
+  const multiSelectMatch = block.match(/^multi_select:\s*(true|false|yes|no|1|0)\s*$/im);
+
   // 3. Extract answer options (lines starting with A., B., C., etc.)
   const optionLines: { label: string; text: string; lineIndex: number }[] = [];
   const optionRegex = /^([A-Z])\.\s+(.+)$/;
@@ -151,6 +153,18 @@ function parseQuestionBlock(block: string, index: number, sourceFile: string): Q
     }
   }
 
+  const allowsMultiple = multiSelectMatch
+    ? parseBooleanField(multiSelectMatch[1])
+    : correctOptions.length > 1;
+
+  if (!allowsMultiple && correctOptions.length > 1) {
+    throw new QuizParseError(
+      sourceFile,
+      index,
+      "multi_select: false cannot be used with multiple correct answers",
+    );
+  }
+
   // 5. Extract explanation from blockquote
   const feedbackMatch = block.match(/^>\s*Overall\s+Feedback:\s*(.+)$/m);
   const explanation = feedbackMatch ? feedbackMatch[1].trim() : "";
@@ -162,6 +176,7 @@ function parseQuestionBlock(block: string, index: number, sourceFile: string): Q
   let textLines = lines.slice(h2LineIdx + 1, firstOptionLineIdx);
   // Remove time_limit line from text
   textLines = textLines.filter((l) => !/^time_limit:\s*\d+/i.test(l.trim()));
+  textLines = textLines.filter((l) => !/^multi_select:\s*(true|false|yes|no|1|0)$/i.test(l.trim()));
   const textMd = textLines.join("\n").trim();
 
   // 7. Render markdown to HTML
@@ -182,6 +197,7 @@ function parseQuestionBlock(block: string, index: number, sourceFile: string): Q
     textHtml,
     options,
     correctOptions,
+    allowsMultiple,
     explanation,
     timeLimitSec,
   };
@@ -208,6 +224,10 @@ function resolveMarkdownImageHref(href: string): string {
   }
 
   return `${QUIZ_IMAGE_PUBLIC_PREFIX}${segments.join("/")}`;
+}
+
+function parseBooleanField(value: string): boolean {
+  return /^(true|yes|1)$/i.test(value.trim());
 }
 
 /** Render markdown to HTML using marked (synchronous) */
